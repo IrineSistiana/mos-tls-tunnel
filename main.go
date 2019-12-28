@@ -20,15 +20,9 @@
 package main
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
 	"flag"
 	"io"
 	"log"
-	"math/big"
 	"net"
 	"os"
 	"os/signal"
@@ -42,17 +36,25 @@ var (
 	bindAddr           = flag.String("b", "127.0.0.1:1080", "bind address")
 	remoteAddr         = flag.String("r", "", "remote address")
 	modeServer         = flag.Bool("s", false, "server mode")
+	modeWSS            = flag.Bool("wss", false, "using WebSocket Secure protocol")
+	path               = flag.String("path", "/", "WebSocket path")
 	keyFile            = flag.String("key", "", "path to key, used by server mode, if both key and cert is empty, a self signed certificate will be used")
 	certFile           = flag.String("cert", "", "path to cert, used by server mode, if both key and cert is empty, a self signed certificate will be used")
-	serverName         = flag.String("n", "", "server name, used to verify the hostname. it is also included in the client's handshake to support virtual hosting unless it is an IP address.")
+	serverName         = flag.String("n", "", "server name, used to verify the hostname. it is also included in the client's handshake to support virtual hosting and wss unless it is an IP address.")
 	insecureSkipVerify = flag.Bool("sv", false, "skip verifies the server's certificate chain and host name. use it with caution.")
 	buffSize           = flag.Int("buff", 32, "size of io buffer for each connection (kb)")
-	timeoutInt         = flag.Int("timeout", 300, "read and write timeout deadline(sec)")
-	verbose            = flag.Bool("verbose", false, "moooore log")
+	timeout            = flag.Duration("timeout", 5*time.Minute, "read and write timeout deadline(sec)")
 
-	tlsConfig tls.Config
-	buffPool  *sync.Pool
-	timeout   time.Duration
+	buffPool *sync.Pool
+
+	//SIP003 not support flag, dont remove it
+	tfo = flag.Bool("fast-open", false, "not support yet, reserved")
+	//SIP003 android
+	vpnMode = flag.Bool("V", false, "vpn mode, used in android system only")
+)
+
+const (
+	handShakeTimeout = time.Second * 10
 )
 
 func main() {
@@ -73,6 +75,13 @@ func main() {
 		}
 		//from SS_PLUGIN_OPTIONS
 		flag.CommandLine.Parse(commandLineOption)
+
+		//parse addtional command from os.Args, such as on android platform
+		additional := flag.NewFlagSet("additional", flag.ContinueOnError)
+		tfo = additional.Bool("fast-open", false, "")
+		vpnMode = additional.Bool("V", false, "")
+		additional.Parse(os.Args[1:])
+
 	} else {
 		//from args
 		flag.Parse()
@@ -104,65 +113,21 @@ func main() {
 		log.Fatal("Fatal: size of io buffer must at least 1kb")
 	}
 
-	if *timeoutInt <= 0 {
+	if *timeout <= 0 {
 		log.Fatal("Fatal: timeout must at least 1 sec")
 	}
 
-	timeout = time.Duration(*timeoutInt) * time.Second
 	buffPool = &sync.Pool{New: func() interface{} {
 		return make([]byte, *buffSize*1024)
 	}}
 
-	var listener net.Listener
-	tlsConfig = tls.Config{
-		ServerName:         *serverName,
-		InsecureSkipVerify: *insecureSkipVerify,
-	}
+	log.Printf("plugin starting...")
+
 	if *modeServer {
-		if len(*certFile) == 0 && len(*keyFile) == 0 { //self signed cert
-			cers, err := generateCertificate()
-			if err != nil {
-				log.Fatalf("Fatal: generate certificate: %v", err)
-			}
-			log.Print("WARNING: you are using self-signed certificate")
-			tlsConfig.Certificates = cers
-		} else {
-			cer, err := tls.LoadX509KeyPair(*certFile, *keyFile) //load cert
-			if err != nil {
-				log.Fatalf("Fatal: failed to load key or cert, %v", err)
-			}
-			tlsConfig.Certificates = []tls.Certificate{cer}
-		}
-
-		var err error
-		listener, err = tls.Listen("tcp", *bindAddr, &tlsConfig)
-		if err != nil {
-			log.Fatalf("Fatal:tls.Listen: %v", err)
-		}
+		go doServer()
 	} else {
-		var err error
-		listener, err = net.Listen("tcp", *bindAddr)
-		if err != nil {
-			log.Fatalf("Fatal: net.Listen: %v", err)
-		}
+		go doLocal()
 	}
-	defer listener.Close()
-
-	go func() {
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				log.Printf("Error: listener failed, %v", err)
-				return
-			}
-
-			if *verbose {
-				log.Printf("accepted an incoming connection from %v", conn.RemoteAddr())
-			}
-
-			go forwardLoop(conn)
-		}
-	}()
 
 	//wait signals
 	osSignals := make(chan os.Signal, 1)
@@ -172,45 +137,13 @@ func main() {
 	os.Exit(0)
 }
 
-func forwardLoop(leftConn net.Conn) {
-	defer leftConn.Close()
-
-	var rightConn net.Conn
-	var err error
-	if *modeServer {
-		rightConn, err = net.Dial("tcp", *remoteAddr)
-	} else {
-		rightConn, err = tls.Dial("tcp", *remoteAddr, &tlsConfig)
-	}
-	if err != nil {
-		log.Printf("Error: tls failed to dial, %v", err)
-		return
-	}
-	defer rightConn.Close()
-
-	if *verbose {
-		log.Printf("opened a tls tunnel: %v -> %v", leftConn.RemoteAddr(), rightConn.LocalAddr())
-	}
-
-	go openTunnel(rightConn, leftConn)
-	openTunnel(leftConn, rightConn)
-}
-
 func openTunnel(dst, src net.Conn) {
 	buf := buffPool.Get().([]byte)
 	defer buffPool.Put(buf)
 
-	i, err := copyBuffer(dst, src, buf, timeout)
-	if *verbose {
-		if err != nil {
-			log.Printf("tunnel %v -> %v closed, data exchanged %d, err %v", src.RemoteAddr(), dst.RemoteAddr(), i, err)
-		} else {
-			log.Printf("tunnel %v -> %v closed, data exchanged %d", src.RemoteAddr(), dst.RemoteAddr(), i)
-		}
-	}
+	copyBuffer(dst, src, buf, *timeout)
 	dst.Close()
 	src.Close()
-
 }
 
 func copyBuffer(dst net.Conn, src net.Conn, buf []byte, timeout time.Duration) (written int64, err error) {
@@ -245,24 +178,4 @@ func copyBuffer(dst net.Conn, src net.Conn, buf []byte, timeout time.Duration) (
 		}
 	}
 	return written, err
-}
-
-func generateCertificate() ([]tls.Certificate, error) {
-	key, err := rsa.GenerateKey(rand.Reader, 1024)
-	if err != nil {
-		return nil, err
-	}
-	template := x509.Certificate{SerialNumber: big.NewInt(1)}
-	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
-	if err != nil {
-		return nil, err
-	}
-	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
-	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
-
-	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
-	if err != nil {
-		return nil, err
-	}
-	return []tls.Certificate{tlsCert}, nil
 }
