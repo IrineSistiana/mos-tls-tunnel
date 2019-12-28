@@ -53,3 +53,9 @@ On the client, option `n` is required:
         ss-local --plugin mos-tls-tunnel --plugin-opts "wss;n=www.cloudflare.com"
         ss-local --plugin mos-tls-tunnel --plugin-opts "sv;n=www.cloudflare.com"
         ...
+
+## Self Signed Certificate
+
+On the server, if both `key` and `cert` is empty, a self signed certificate will be used. And the string from `n` will be certificate's `DNSName`. 
+
+On the client, if server's certificate can't be verified. Option `sv` is required. Use it with caution.
