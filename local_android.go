@@ -64,4 +64,6 @@ func uintptrToBytes(u uintptr) []byte {
 	default:
 		panic(fmt.Sprintf("unknown uintptr size: %v", size))
 	}
+
+	return b
 }
