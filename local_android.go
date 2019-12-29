@@ -26,8 +26,9 @@ import (
 	"log"
 	"net"
 	"syscall"
-	"time"
 	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 func setControl(d *net.Dialer) {
@@ -36,20 +37,36 @@ func setControl(d *net.Dialer) {
 	}
 }
 
-func callback(fd uintptr) {
-	path := "protect_path"
+var protectPath = "protect_path"
+var unixAddr = &unix.SockaddrUnix{Name: protectPath}
+var unixTimeout = &unix.Timeval{Sec: 3, Usec: 0}
 
-	unixConn, err := net.Dial("unix", path)
+func callback(fd uintptr) {
+
+	socket, err := unix.Socket(unix.AF_UNIX, unix.SOCK_STREAM, 0)
 	if err != nil {
 		log.Print(err)
 		return
 	}
-	defer unixConn.Close()
-	unixConn.SetDeadline(time.Now().Add(time.Second * 5))
-	if _, err := unixConn.Write(uintptrToBytes(fd)); err != nil {
+	defer unix.Close(socket)
+
+	unix.SetsockoptTimeval(socket, unix.SOL_SOCKET, unix.SO_RCVTIMEO, unixTimeout)
+	unix.SetsockoptTimeval(socket, unix.SOL_SOCKET, unix.SO_SNDTIMEO, unixTimeout)
+
+	err = unix.Connect(socket, unixAddr)
+	if err != nil {
 		log.Print(err)
 		return
 	}
+
+	//send fd
+	if err := unix.Sendmsg(socket, nil, unix.UnixRights(int(fd)), nil, 0); err != nil {
+		log.Print(err)
+		return
+	}
+
+	//Read test ???
+	unix.Read(socket, make([]byte, 1))
 	return
 }
 
