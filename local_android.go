@@ -21,12 +21,9 @@
 package main
 
 import (
-	"encoding/binary"
-	"fmt"
 	"log"
 	"net"
 	"syscall"
-	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
@@ -68,19 +65,4 @@ func callback(fd uintptr) {
 	//Read test ???
 	unix.Read(socket, make([]byte, 1))
 	return
-}
-
-func uintptrToBytes(u uintptr) []byte {
-	size := unsafe.Sizeof(u)
-	b := make([]byte, size)
-	switch size {
-	case 4:
-		binary.BigEndian.PutUint32(b, uint32(u))
-	case 8:
-		binary.BigEndian.PutUint64(b, uint64(u))
-	default:
-		panic(fmt.Sprintf("unknown uintptr size: %v", size))
-	}
-
-	return b
 }
