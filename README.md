@@ -6,30 +6,30 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
 
 ## Usage
 
-        -V    vpn mode, used in android system only
+        -V    VPN mode, used in android system only
         -b string
-                bind address (default "127.0.0.1:1080")
+                Bind address (default "127.0.0.1:1080")
         -buff int
-                size of io buffer for each connection (kb) (default 32)
+                Size of io buffer for each connection (kb) (default 32)
         -cert string
-                path to cert, used by server mode, if both key and cert is empty, a self signed certificate will be used
+                Path to cert, used by server mode. If both key and cert is empty, a self signed certificate will be used
         -fast-open
-                not support yet, reserved
+                Not support yet, reserved
         -key string
-                path to key, used by server mode, if both key and cert is empty, a self signed certificate will be used
+                Path to key, used by server mode. If both key and cert is empty, a self signed certificate will be used
         -n string
-                server name, used to verify the hostname. it is also included in the client's handshake to support virtual hosting unless it is an IP address.
+                Server name, used to verify the hostname. It is also included in the client's TLS and WSS handshake to support virtual hosting unless it is an IP address.
         -path string
                 WebSocket path (default "/")
         -r string
-                remote address
-        -s    server mode
+                Remote address
+        -s    Server mode
         -sv
-                skip verifies the server's certificate chain and host name. use it with caution.
+                Skip verify, client won't verify the server's certificate chain and host name. In this mode, your connctions are susceptible to man-in-the-middle attacks. Use it with caution.
         -timeout duration
-                read and write timeout deadline(sec) (default 5m0s)
+                the idle timeout for connections (sec) (default 5m0s)
         -wss
-                using WebSocket Secure protocol
+                Enable WebSocket Secure protocol
 
 ## WebSocket Secure
 

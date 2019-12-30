@@ -33,24 +33,24 @@ import (
 )
 
 var (
-	bindAddr           = flag.String("b", "127.0.0.1:1080", "bind address")
-	remoteAddr         = flag.String("r", "", "remote address")
-	modeServer         = flag.Bool("s", false, "server mode")
-	modeWSS            = flag.Bool("wss", false, "using WebSocket Secure protocol")
+	bindAddr           = flag.String("b", "127.0.0.1:1080", "Bind address")
+	remoteAddr         = flag.String("r", "", "Remote address")
+	modeServer         = flag.Bool("s", false, "Server mode")
+	modeWSS            = flag.Bool("wss", false, "Enable WebSocket Secure protocol")
 	path               = flag.String("path", "/", "WebSocket path")
-	keyFile            = flag.String("key", "", "path to key, used by server mode, if both key and cert is empty, a self signed certificate will be used")
-	certFile           = flag.String("cert", "", "path to cert, used by server mode, if both key and cert is empty, a self signed certificate will be used")
-	serverName         = flag.String("n", "", "server name, used to verify the hostname. it is also included in the client's handshake to support virtual hosting and wss unless it is an IP address.")
-	insecureSkipVerify = flag.Bool("sv", false, "skip verifies the server's certificate chain and host name. use it with caution.")
-	buffSize           = flag.Int("buff", 32, "size of io buffer for each connection (kb)")
-	timeout            = flag.Duration("timeout", 5*time.Minute, "read and write timeout deadline(sec)")
+	keyFile            = flag.String("key", "", "Path to key, used by server mode. If both key and cert is empty, a self signed certificate will be used")
+	certFile           = flag.String("cert", "", "Path to cert, used by server mode. If both key and cert is empty, a self signed certificate will be used")
+	serverName         = flag.String("n", "", "Server name, used to verify the hostname. It is also included in the client's TLS and WSS handshake to support virtual hosting unless it is an IP address.")
+	insecureSkipVerify = flag.Bool("sv", false, "Skip verify, client won't verify the server's certificate chain and host name. In this mode, your connections are susceptible to man-in-the-middle attacks. Use it with caution.")
+	buffSize           = flag.Int("buff", 32, "Size of io buffer for each connection (kb)")
+	timeout            = flag.Duration("timeout", 5*time.Minute, "the idle timeout for connections (sec)")
 
 	buffPool *sync.Pool
 
 	//SIP003 not support flag, dont remove it
-	tfo = flag.Bool("fast-open", false, "not support yet, reserved")
+	tfo = flag.Bool("fast-open", false, "Not support yet, reserved")
 	//SIP003 android
-	vpnMode = flag.Bool("V", false, "vpn mode, used in android system only")
+	vpnMode = flag.Bool("V", false, "VPN mode, used in android system only")
 )
 
 const (
