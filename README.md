@@ -10,7 +10,7 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
         -b string
                 Bind address (default "127.0.0.1:1080")
         -buff int
-                Size of io buffer for each connection (kb) (default 32)
+                Size of io buffer for each connection (kb) (default 4)
         -cert string
                 Path to cert, used by server mode. If both key and cert is empty, a self signed certificate will be used
         -fast-open
@@ -25,9 +25,9 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
                 Remote address
         -s    Server mode
         -sv
-                Skip verify, client won't verify the server's certificate chain and host name. In this mode, your connctions are susceptible to man-in-the-middle attacks. Use it with caution.
+                Skip verify, client won't verify the server's certificate chain and host name. In this mode, your connections are susceptible to man-in-the-middle attacks. Use it with caution.
         -timeout duration
-                the idle timeout for connections (sec) (default 5m0s)
+                the idle timeout for connections (default 5m0s)
         -wss
                 Enable WebSocket Secure protocol
 
@@ -50,7 +50,7 @@ On the server, option `s` is required, for example:
 
 On the client, option `n` is required:
 
-        ss-local --plugin mos-tls-tunnel --plugin-opts "wss;n=www.cloudflare.com"
+        ss-local --plugin mos-tls-tunnel --plugin-opts "wss;n=my.domain.example"
         ss-local --plugin mos-tls-tunnel --plugin-opts "sv;n=www.cloudflare.com"
         ...
 
@@ -59,3 +59,7 @@ On the client, option `n` is required:
 On the server, if both `key` and `cert` is empty, a self signed certificate will be used. And the string from `n` will be certificate's `DNSName`. 
 
 On the client, if server's certificate can't be verified. Option `sv` is required. Use it with caution.
+
+## Open Source Components / Libraries
+
+* [gorilla/websocket](https://github.com/gorilla/websocket): [BSD-2-Clause](https://github.com/gorilla/websocket/blob/master/LICENSE)
