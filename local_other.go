@@ -21,8 +21,10 @@
 
 package main
 
-import "net"
+import (
+	"syscall"
+)
 
-func setControl(d *net.Dialer) {
-	return //do nothing
+func getControlFunc() func(network, address string, c syscall.RawConn) error {
+	return nil
 }

@@ -22,15 +22,18 @@ package main
 
 import (
 	"log"
-	"net"
 	"syscall"
 
 	"golang.org/x/sys/unix"
 )
 
-func setControl(d *net.Dialer) {
-	d.Control = func(network, address string, c syscall.RawConn) error {
-		return c.Control(callback)
+func getControlFunc() func(network, address string, c syscall.RawConn) error {
+	if *vpnMode {
+		return func(network, address string, c syscall.RawConn) error {
+			return c.Control(callback)
+		}
+	} else {
+		return nil
 	}
 }
 

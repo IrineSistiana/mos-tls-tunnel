@@ -76,9 +76,7 @@ func forwardToServer(leftConn net.Conn) {
 	defer leftConn.Close()
 
 	d := &net.Dialer{Timeout: handShakeTimeout}
-	if *vpnMode {
-		setControl(d)
-	}
+	d.Control = getControlFunc()
 
 	rightRawConn, err := d.Dial("tcp", *remoteAddr)
 	if err != nil {
