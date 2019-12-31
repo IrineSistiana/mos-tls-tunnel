@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:7d9f75ab9c0f1fd097d3213059c545392f17189bad556640b31fb4c958dd473b"
-  name = "golang.org/x/net"
-  packages = ["websocket"]
+  digest = "1:e62657cca9badaa308d86e7716083e4c5933bb78e30a17743fc67f50be26f6f4"
+  name = "github.com/gorilla/websocket"
+  packages = ["."]
   pruneopts = "UT"
-  revision = "c0dbc17a35534bf2e581d7a942408dc936316da4"
+  revision = "c3e18be99d19e6b3e8f1559eea2c161a665c4b6b"
+  version = "v1.4.1"
 
 [[projects]]
   branch = "master"
@@ -21,7 +21,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "golang.org/x/net/websocket",
+    "github.com/gorilla/websocket",
     "golang.org/x/sys/unix",
   ]
   solver-name = "gps-cdcl"

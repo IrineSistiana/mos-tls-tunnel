@@ -45,7 +45,8 @@ var (
 	buffSize           = flag.Int("buff", 32, "Size of io buffer for each connection (kb)")
 	timeout            = flag.Duration("timeout", 5*time.Minute, "the idle timeout for connections (sec)")
 
-	buffPool *sync.Pool
+	buffPool   *sync.Pool
+	wsBuffPool *sync.Pool
 
 	//SIP003 not support flag, dont remove it
 	tfo = flag.Bool("fast-open", false, "Not support yet, reserved")
@@ -119,6 +120,11 @@ func main() {
 
 	buffPool = &sync.Pool{New: func() interface{} {
 		return make([]byte, *buffSize*1024)
+	}}
+
+	//this buff pool is used as a websocket write buffPool with size = *buffSize*1024
+	wsBuffPool = &sync.Pool{New: func() interface{} {
+		return nil
 	}}
 
 	log.Printf("plugin starting...")

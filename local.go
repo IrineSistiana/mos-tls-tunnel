@@ -23,13 +23,10 @@ import (
 	"crypto/tls"
 	"log"
 	"net"
-	"time"
-
-	"golang.org/x/net/websocket"
 )
 
-var localWSConfig *websocket.Config
 var localTLSConfig *tls.Config
+var wssURL string
 
 func doLocal() {
 	//checking
@@ -48,11 +45,7 @@ func doLocal() {
 
 	//init ws config
 	if *modeWSS {
-		localWSConfig, err = websocket.NewConfig("wss://"+*serverName+*path, "https://"+*serverName)
-		if err != nil {
-			log.Fatalf("Fatal: websocket.NewConfig: %v", err)
-		}
-		localWSConfig.TlsConfig = localTLSConfig
+		wssURL = "wss://" + *serverName + *path
 	}
 
 	listener, err := net.Listen("tcp", *bindAddr)
@@ -74,37 +67,28 @@ func doLocal() {
 
 func forwardToServer(leftConn net.Conn) {
 	defer leftConn.Close()
-
-	d := &net.Dialer{Timeout: handShakeTimeout}
-	d.Control = getControlFunc()
-
-	rightRawConn, err := d.Dial("tcp", *remoteAddr)
-	if err != nil {
-		log.Printf("Error: tcp failed to dial, %v", err)
-		return
-	}
-	defer rightRawConn.Close()
-
-	rightRawConn.SetDeadline(time.Now().Add(handShakeTimeout)) //set hand shake timeout
-	tlsConn := tls.Client(rightRawConn, localTLSConfig)
-	if err := tlsConn.Handshake(); err != nil {
-		log.Printf("Error: TLS handshake, %v", err)
-		return
-	}
-
 	var rightConn net.Conn
-	if *modeWSS {
-		ws, err := websocket.NewClient(localWSConfig, tlsConn)
+
+	if *modeWSS { // websocket enabled
+		conn, err := dialWS(wssURL, localTLSConfig)
 		if err != nil {
-			log.Printf("Error: ws failed to dial, %v", err)
+			log.Printf("Error: dial wss connection failed, %v", err)
 			return
 		}
-		defer ws.Close()
-		rightConn = ws
+		defer conn.Close()
+		rightConn = conn
 	} else {
-		rightConn = tlsConn
+		d := &net.Dialer{Timeout: handShakeTimeout}
+		d.Control = getControlFunc()
+
+		conn, err := tls.DialWithDialer(d, "tcp", *remoteAddr, localTLSConfig)
+		if err != nil {
+			log.Printf("Error: failed to establish TLS connection, %v", err)
+			return
+		}
+		defer conn.Close()
+		rightConn = conn
 	}
-	rightRawConn.SetDeadline(time.Time{}) //hand shake completed, reset timeout
 
 	go openTunnel(rightConn, leftConn)
 	openTunnel(leftConn, rightConn)

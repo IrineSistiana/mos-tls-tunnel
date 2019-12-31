@@ -30,7 +30,7 @@ import (
 	"net"
 	"net/http"
 
-	"golang.org/x/net/websocket"
+	"github.com/gorilla/websocket"
 )
 
 func doServer() {
@@ -58,7 +58,13 @@ func doServer() {
 	log.Printf("plugin listen at %s", listener.Addr())
 
 	if *modeWSS {
-		http.Handle(*path, websocket.Handler(server))
+		upgrader := websocket.Upgrader{
+			HandshakeTimeout: handShakeTimeout,
+			ReadBufferSize:   0, // buffers allocated by the HTTP server are used
+			WriteBufferSize:  *buffSize * 1024,
+			WriteBufferPool:  wsBuffPool,
+		}
+		http.Handle(*path, wsHandler{u: upgrader})
 		err = http.Serve(listener, nil)
 		if err != nil {
 			log.Fatalf("Fatal: ListenAndServe: %v", err)
@@ -86,8 +92,19 @@ func doServer() {
 	}
 }
 
-func server(ws *websocket.Conn) {
-	defer ws.Close()
+type wsHandler struct {
+	u websocket.Upgrader
+}
+
+// ServeHTTP implements http.Handler interface
+func (h wsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	leftWSconn, err := h.u.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer leftWSconn.Close()
+
 	rightConn, err := net.Dial("tcp", *remoteAddr)
 	if err != nil {
 		log.Printf("Error: tcp failed to dial, %v", err)
@@ -95,8 +112,9 @@ func server(ws *websocket.Conn) {
 	}
 	defer rightConn.Close()
 
-	go openTunnel(ws, rightConn)
-	openTunnel(rightConn, ws)
+	leftconn := &wsConn{conn: leftWSconn}
+	go openTunnel(leftconn, rightConn)
+	openTunnel(rightConn, leftconn)
 }
 
 func generateCertificate() ([]tls.Certificate, error) {
