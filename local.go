@@ -69,8 +69,13 @@ func forwardToServer(leftConn net.Conn) {
 	defer leftConn.Close()
 	var rightConn net.Conn
 
+	d := &net.Dialer{
+		Control: getControlFunc(),
+		Timeout: handShakeTimeout,
+	}
+
 	if *modeWSS { // websocket enabled
-		conn, err := dialWS(wssURL, localTLSConfig)
+		conn, err := dialWS(d, wssURL, localTLSConfig)
 		if err != nil {
 			log.Printf("Error: dial wss connection failed, %v", err)
 			return
@@ -78,9 +83,6 @@ func forwardToServer(leftConn net.Conn) {
 		defer conn.Close()
 		rightConn = conn
 	} else {
-		d := &net.Dialer{Timeout: handShakeTimeout}
-		d.Control = getControlFunc()
-
 		conn, err := tls.DialWithDialer(d, "tcp", *remoteAddr, localTLSConfig)
 		if err != nil {
 			log.Printf("Error: failed to establish TLS connection, %v", err)

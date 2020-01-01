@@ -15,14 +15,10 @@ type wsConn struct {
 	reader io.Reader
 }
 
-// internelDial is a wrapper for net.Dial, it set the Dialer.Control and uses *remoteAddr as addr
-func internelDial(network, addr string) (net.Conn, error) {
-	d := net.Dialer{}
-	d.Control = getControlFunc()
-	return d.Dial(network, *remoteAddr)
-}
-
-func dialWS(urlStr string, tlsConfig *tls.Config) (net.Conn, error) {
+func dialWS(dialer *net.Dialer, urlStr string, tlsConfig *tls.Config) (net.Conn, error) {
+	internelDial := func(network, addr string) (net.Conn, error) {
+		return dialer.Dial(network, *remoteAddr)
+	}
 	d := websocket.Dialer{
 		TLSClientConfig: tlsConfig,
 		NetDial:         internelDial,

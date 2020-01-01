@@ -20,6 +20,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"io"
 	"log"
@@ -52,6 +53,9 @@ var (
 	tfo = flag.Bool("fast-open", false, "Not support yet, reserved")
 	//SIP003 android
 	vpnMode = flag.Bool("V", false, "VPN mode, used in android system only")
+
+	//debug only, used in android system to avoid dns lookup dead loop
+	fallbackDNS = flag.String("fallback-dns", "", "A dns server that used to resolve host name, must be an IP address. It must be an IP address")
 )
 
 const (
@@ -126,6 +130,21 @@ func main() {
 	wsBuffPool = &sync.Pool{New: func() interface{} {
 		return nil
 	}}
+
+	if len(*fallbackDNS) != 0 {
+		//set fallback dns server
+		if net.ParseIP(*fallbackDNS) == nil { //it's not a IP addr
+			log.Fatalf("Fatal: fallback dns server must be an IP addr, got %s", *fallbackDNS)
+		}
+
+		//just overwrite net.DefaultResolver
+		net.DefaultResolver.PreferGo = true
+		net.DefaultResolver.Dial = func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{}
+			d.Control = getControlFunc()
+			return d.DialContext(ctx, "tcp", *fallbackDNS)
+		}
+	}
 
 	log.Printf("plugin starting...")
 
