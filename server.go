@@ -25,12 +25,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"log"
 	"math/big"
 	"net"
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 )
 
 func doServer() {
@@ -39,23 +39,23 @@ func doServer() {
 	if len(*certFile) == 0 && len(*keyFile) == 0 { //self signed cert
 		cers, err := generateCertificate()
 		if err != nil {
-			log.Fatalf("Fatal: generate certificate: %v", err)
+			logrus.Fatalf("generate certificate: %v", err)
 		}
-		log.Print("WARNING: you are using self-signed certificate")
+		logrus.Print("WARNING: you are using self-signed certificate")
 		tlsConfig.Certificates = cers
 	} else {
 		cer, err := tls.LoadX509KeyPair(*certFile, *keyFile) //load cert
 		if err != nil {
-			log.Fatalf("Fatal: failed to load key or cert, %v", err)
+			logrus.Fatalf("failed to load key or cert, %v", err)
 		}
 		tlsConfig.Certificates = []tls.Certificate{cer}
 	}
 
 	listener, err := tls.Listen("tcp", *bindAddr, tlsConfig)
 	if err != nil {
-		log.Fatalf("Fatal: tls.Listen: %v", err)
+		logrus.Fatalf("tls.Listen: %v", err)
 	}
-	log.Printf("plugin listen at %s", listener.Addr())
+	logrus.Printf("plugin listen at %s", listener.Addr())
 
 	if *modeWSS {
 		upgrader := websocket.Upgrader{
@@ -67,23 +67,25 @@ func doServer() {
 		http.Handle(*path, wsHandler{u: upgrader})
 		err = http.Serve(listener, nil)
 		if err != nil {
-			log.Fatalf("Fatal: ListenAndServe: %v", err)
+			logrus.Fatalf("ListenAndServe: %v", err)
 		}
 	} else {
 		for {
 			leftConn, err := listener.Accept()
 			if err != nil {
-				log.Fatalf("Fatal: listener.Accept: %v", err)
+				logrus.Fatalf("listener.Accept: %v", err)
 			}
+			logrus.Debugf("leftConn from %s accepted", leftConn.RemoteAddr())
 
 			go func(leftConn net.Conn) {
 				defer leftConn.Close()
 				rightConn, err := net.Dial("tcp", *remoteAddr)
 				if err != nil {
-					log.Printf("Error: net.Dial, %v", err)
+					logrus.Errorf("net.Dial, %v", err)
 					return
 				}
 				defer rightConn.Close()
+				logrus.Debugf("rightConn from %s to %s established", leftConn.RemoteAddr(), rightConn.RemoteAddr())
 
 				go openTunnel(rightConn, leftConn)
 				openTunnel(leftConn, rightConn)
@@ -100,14 +102,14 @@ type wsHandler struct {
 func (h wsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	leftWSconn, err := h.u.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		logrus.Println(err)
 		return
 	}
 	defer leftWSconn.Close()
 
 	rightConn, err := net.Dial("tcp", *remoteAddr)
 	if err != nil {
-		log.Printf("Error: tcp failed to dial, %v", err)
+		logrus.Errorf("tcp failed to dial, %v", err)
 		return
 	}
 	defer rightConn.Close()

@@ -21,8 +21,9 @@
 package main
 
 import (
-	"log"
 	"syscall"
+
+	"github.com/sirupsen/logrus"
 
 	"golang.org/x/sys/unix"
 )
@@ -45,7 +46,7 @@ func callback(fd uintptr) {
 
 	socket, err := unix.Socket(unix.AF_UNIX, unix.SOCK_STREAM, 0)
 	if err != nil {
-		log.Print(err)
+		logrus.Print(err)
 		return
 	}
 	defer unix.Close(socket)
@@ -55,13 +56,13 @@ func callback(fd uintptr) {
 
 	err = unix.Connect(socket, unixAddr)
 	if err != nil {
-		log.Print(err)
+		logrus.Print(err)
 		return
 	}
 
 	//send fd
 	if err := unix.Sendmsg(socket, nil, unix.UnixRights(int(fd)), nil, 0); err != nil {
-		log.Print(err)
+		logrus.Print(err)
 		return
 	}
 

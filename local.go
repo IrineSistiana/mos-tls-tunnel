@@ -21,8 +21,9 @@ package main
 
 import (
 	"crypto/tls"
-	"log"
 	"net"
+
+	"github.com/sirupsen/logrus"
 )
 
 var localTLSConfig *tls.Config
@@ -31,10 +32,10 @@ var wssURL string
 func doLocal() {
 	//checking
 	if len(*path) == 0 {
-		log.Fatal("Fatal: bad url")
+		logrus.Fatal("bad url")
 	}
 	if len(*serverName) == 0 {
-		log.Fatal("Fatal: bad server name")
+		logrus.Fatal("bad server name")
 	}
 
 	//init tls config
@@ -50,17 +51,19 @@ func doLocal() {
 
 	listener, err := net.Listen("tcp", *bindAddr)
 	if err != nil {
-		log.Fatalf("Fatal: net.Listen: %v", err)
+		logrus.Fatalf("net.Listen: %v", err)
 	}
 	defer listener.Close()
-	log.Printf("plugin listen at %s", listener.Addr())
+	logrus.Printf("plugin listen at %s", listener.Addr())
 
 	for {
-		conn, err := listener.Accept()
+		leftConn, err := listener.Accept()
 		if err != nil {
-			log.Fatalf("Error: listener failed, %v", err)
+			logrus.Fatalf("listener failed, %v", err)
 		}
-		go forwardToServer(conn)
+		logrus.Debugf("leftConn from %s accepted", leftConn.RemoteAddr())
+
+		go forwardToServer(leftConn)
 	}
 
 }
@@ -77,7 +80,7 @@ func forwardToServer(leftConn net.Conn) {
 	if *modeWSS { // websocket enabled
 		conn, err := dialWS(d, wssURL, localTLSConfig)
 		if err != nil {
-			log.Printf("Error: dial wss connection failed, %v", err)
+			logrus.Errorf("dial wss connection failed, %v", err)
 			return
 		}
 		defer conn.Close()
@@ -85,12 +88,13 @@ func forwardToServer(leftConn net.Conn) {
 	} else {
 		conn, err := tls.DialWithDialer(d, "tcp", *remoteAddr, localTLSConfig)
 		if err != nil {
-			log.Printf("Error: failed to establish TLS connection, %v", err)
+			logrus.Errorf("failed to establish TLS connection, %v", err)
 			return
 		}
 		defer conn.Close()
 		rightConn = conn
 	}
+	logrus.Debugf("rightConn from %s to %s established", leftConn.RemoteAddr(), rightConn.RemoteAddr())
 
 	go openTunnel(rightConn, leftConn)
 	openTunnel(leftConn, rightConn)

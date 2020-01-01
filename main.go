@@ -23,7 +23,6 @@ import (
 	"context"
 	"flag"
 	"io"
-	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -31,6 +30,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -56,6 +57,8 @@ var (
 
 	//debug only, used in android system to avoid dns lookup dead loop
 	fallbackDNS = flag.String("fallback-dns", "", "A dns server that used to resolve host name, must be an IP address. It must be an IP address")
+
+	verbose = flag.Bool("verbose", false, "more log")
 )
 
 const (
@@ -75,7 +78,7 @@ func main() {
 			case 2:
 				commandLineOption = append(commandLineOption, "-"+optionPair[0], optionPair[1])
 			default:
-				log.Fatalf("invalid option string [%s]", so)
+				logrus.Fatalf("invalid option string [%s]", so)
 			}
 		}
 		//from SS_PLUGIN_OPTIONS
@@ -111,15 +114,19 @@ func main() {
 	}
 
 	if len(*remoteAddr) == 0 {
-		log.Fatal("Fatal: no remote server address")
+		logrus.Fatal("no remote server address")
 	}
 
 	if *buffSize <= 0 {
-		log.Fatal("Fatal: size of io buffer must at least 1kb")
+		logrus.Fatal("size of io buffer must at least 1kb")
 	}
 
 	if *timeout <= 0 {
-		log.Fatal("Fatal: timeout must at least 1 sec")
+		logrus.Fatal("timeout must at least 1 sec")
+	}
+
+	if *verbose {
+		logrus.SetLevel(logrus.DebugLevel)
 	}
 
 	buffPool = &sync.Pool{New: func() interface{} {
@@ -134,7 +141,7 @@ func main() {
 	if len(*fallbackDNS) != 0 {
 		//set fallback dns server
 		if net.ParseIP(*fallbackDNS) == nil { //it's not a IP addr
-			log.Fatalf("Fatal: fallback dns server must be an IP addr, got %s", *fallbackDNS)
+			logrus.Fatalf("fallback dns server must be an IP addr, got %s", *fallbackDNS)
 		}
 
 		//just overwrite net.DefaultResolver
@@ -146,7 +153,7 @@ func main() {
 		}
 	}
 
-	log.Printf("plugin starting...")
+	logrus.Printf("plugin starting...")
 
 	if *modeServer {
 		go doServer()
@@ -158,7 +165,7 @@ func main() {
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, os.Kill, syscall.SIGTERM)
 	s := <-osSignals
-	log.Printf("exiting: signal: %v", s)
+	logrus.Printf("exiting: signal: %v", s)
 	os.Exit(0)
 }
 
