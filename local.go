@@ -34,8 +34,8 @@ func doLocal() {
 	if len(*path) == 0 {
 		logrus.Fatal("bad url")
 	}
-	if len(*serverName) == 0 {
-		logrus.Fatal("bad server name")
+	if len(*serverName) == 0 { //set serverName as remoteAddr
+		serverName = remoteAddr //we already checked len(*remoteAddr) before
 	}
 
 	//init tls config
