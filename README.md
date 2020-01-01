@@ -13,6 +13,8 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
                 Size of io buffer for each connection (kb) (default 4)
         -cert string
                 Path to cert, used by server mode. If both key and cert is empty, a self signed certificate will be used
+        -fallback-dns string
+                use this server instead of system default to resolve host name, must be an IP address.
         -fast-open
                 Not support yet, reserved
         -key string
@@ -26,10 +28,6 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
         -s    Server mode
         -sv
                 Skip verify, client won't verify the server's certificate chain and host name. In this mode, your connections are susceptible to man-in-the-middle attacks. Use it with caution.
-        -timeout duration
-                the idle timeout for connections (default 5m0s)
-        -wss
-                Enable WebSocket Secure protocol
 
 ## WebSocket Secure
 
@@ -48,10 +46,11 @@ On the server, option `s` is required, for example:
         ss-server --plugin mos-tls-tunnel --plugin-opts "s;cert=/path/to/your/cert;key=/path/to/your/key"
         ...
 
-On the client, option `n` is required:
+On the client:
 
-        ss-local --plugin mos-tls-tunnel --plugin-opts "wss;n=my.domain.example"
+        ss-local --plugin mos-tls-tunnel --plugin-opts "wss"
         ss-local --plugin mos-tls-tunnel --plugin-opts "sv;n=www.cloudflare.com"
+        ss-local --plugin mos-tls-tunnel --plugin-opts "wss,sv;n=www.cloudflare.com,buff=32"
         ...
 
 ## Self Signed Certificate
