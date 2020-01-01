@@ -56,8 +56,9 @@ var (
 	vpnMode = flag.Bool("V", false, "VPN mode, used in android system only")
 
 	//debug only, used in android system to avoid dns lookup dead loop
-	fallbackDNS = flag.String("fallback-dns", "", "A dns server that used to resolve host name, must be an IP address. It must be an IP address")
+	fallbackDNS = flag.String("fallback-dns", "", "use this server instead of system default to resolve host name, must be an IP address.")
 
+	//debug only
 	verbose = flag.Bool("verbose", false, "more log")
 )
 
