@@ -62,3 +62,4 @@ On the client, if server's certificate can't be verified. Option `sv` is require
 ## Open Source Components / Libraries
 
 * [gorilla/websocket](https://github.com/gorilla/websocket): [BSD-2-Clause](https://github.com/gorilla/websocket/blob/master/LICENSE)
+* [sirupsen\logrus](https://github.com/sirupsen/logrus): [MIT](https://github.com/sirupsen/logrus/blob/master/LICENSE)
