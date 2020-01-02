@@ -42,7 +42,7 @@ func setSockOpt(uintptrFd uintptr) {
 	if *noDelay {
 		err = windows.SetsockoptInt(fd, windows.IPPROTO_TCP, windows.TCP_NODELAY, 1)
 		if err != nil {
-			logrus.Print(err)
+			logrus.Errorf("setsockopt TCP_NODELAY, %v", err)
 		}
 	}
 
@@ -54,11 +54,11 @@ func setSockOpt(uintptrFd uintptr) {
 
 	err = windows.SetsockoptInt(fd, windows.SOL_SOCKET, windows.SO_SNDBUF, tcpBuffSize)
 	if err != nil {
-		logrus.Print(err)
+		logrus.Errorf("setsockopt SO_SNDBUF, %v", err)
 	}
 	err = windows.SetsockoptInt(fd, windows.SOL_SOCKET, windows.SO_RCVBUF, tcpBuffSize)
 	if err != nil {
-		logrus.Print(err)
+		logrus.Errorf("setsockopt SO_RCVBUF, %v", err)
 	}
 
 	return

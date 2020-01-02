@@ -47,7 +47,7 @@ func sendFdToBypass(fd uintptr) {
 
 	socket, err := unix.Socket(unix.AF_UNIX, unix.SOCK_STREAM, 0)
 	if err != nil {
-		logrus.Print(err)
+		logrus.Errorf("sendFdToBypass Socket, %v", err)
 		return
 	}
 	defer unix.Close(socket)
@@ -57,13 +57,13 @@ func sendFdToBypass(fd uintptr) {
 
 	err = unix.Connect(socket, unixAddr)
 	if err != nil {
-		logrus.Print(err)
+		logrus.Errorf("sendFdToBypass Connect, %v", err)
 		return
 	}
 
 	//send fd
 	if err := unix.Sendmsg(socket, nil, unix.UnixRights(int(fd)), nil, 0); err != nil {
-		logrus.Print(err)
+		logrus.Errorf("sendFdToBypass Sendmsg, %v", err)
 		return
 	}
 

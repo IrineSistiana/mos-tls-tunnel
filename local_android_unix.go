@@ -33,31 +33,31 @@ func setSockOpt(uintFd uintptr) {
 	if *tfo {
 		err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_FASTOPEN_CONNECT, 1)
 		if err != nil {
-			logrus.Print(err)
+			logrus.Errorf("setsockopt TCP_FASTOPEN_CONNECT, %v", err)
 		}
 	}
 
 	if *noDelay {
 		err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_NODELAY, 1)
 		if err != nil {
-			logrus.Print(err)
+			logrus.Errorf("setsockopt TCP_NODELAY, %v", err)
 		}
 	}
 
 	if *mss > 0 {
 		err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_MAXSEG, *mss)
 		if err != nil {
-			logrus.Print(err)
+			logrus.Errorf("setsockopt TCP_MAXSEG, %v", err)
 		}
 	}
 
 	err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_SNDBUF, tcpBuffSize)
 	if err != nil {
-		logrus.Print(err)
+		logrus.Errorf("setsockopt SO_SNDBUF, %v", err)
 	}
 	err = unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_RCVBUF, tcpBuffSize)
 	if err != nil {
-		logrus.Print(err)
+		logrus.Errorf("setsockopt SO_RCVBUF, %v", err)
 	}
 
 	return
