@@ -30,21 +30,28 @@ import (
 func setSockOpt(uintFd uintptr) {
 	fd := int(uintFd)
 
+	if *tfo {
+		err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_FASTOPEN_CONNECT, 1)
+		if err != nil {
+			logrus.Print(err)
+		}
+	}
+
 	if *noDelay {
-		err = unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_NODELAY, 1)
+		err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_NODELAY, 1)
 		if err != nil {
 			logrus.Print(err)
 		}
 	}
 
 	if *mss > 0 {
-		err = unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_MAXSEG, *mss)
+		err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_MAXSEG, *mss)
 		if err != nil {
 			logrus.Print(err)
 		}
 	}
 
-	err = unix.SetsockoptInt(socket, unix.SOL_SOCKET, unix.SO_SNDBUF, *buffSize*1024)
+	err := unix.SetsockoptInt(socket, unix.SOL_SOCKET, unix.SO_SNDBUF, *buffSize*1024)
 	if err != nil {
 		logrus.Print(err)
 	}

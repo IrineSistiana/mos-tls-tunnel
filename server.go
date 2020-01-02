@@ -20,6 +20,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
@@ -51,10 +52,13 @@ func doServer() {
 		tlsConfig.Certificates = []tls.Certificate{cer}
 	}
 
-	listener, err := tls.Listen("tcp", *bindAddr, tlsConfig)
+	listenConfig := net.ListenConfig{Control: getControlFunc()}
+	innerListener, err := listenConfig.Listen(context.Background(), "tcp", *bindAddr)
 	if err != nil {
-		logrus.Fatalf("tls.Listen: %v", err)
+		logrus.Fatalf("tls inner Listener: %v", err)
 	}
+
+	listener := tls.NewListener(innerListener, tlsConfig)
 	logrus.Printf("plugin listen at %s", listener.Addr())
 
 	if *modeWSS {
