@@ -52,8 +52,8 @@ var (
 	mss     = flag.Int("mss", 0, "The maximum segment size for outgoing TCP packets, linux only")
 	tfo     = flag.Bool("fast-open", false, "Enable TCP fast open, only support linux with kernel version 4.11+")
 
-	//SIP003 android
-	vpnMode = flag.Bool("V", false, "VPN mode, used in android system only")
+	//SIP003 android, init it later
+	vpnMode *bool
 
 	//debug only, used in android system to avoid dns lookup dead loop
 	fallbackDNS = flag.String("fallback-dns", "", "use this server instead of system default to resolve host name, must be an IP address.")
@@ -76,10 +76,18 @@ const (
 )
 
 func main() {
-	//SS_PLUGIN_OPTIONS
-	if o, ok := os.LookupEnv("SS_PLUGIN_OPTIONS"); ok {
+	//SS_REMOTE_HOST, SS_REMOTE_PORT, SS_LOCAL_HOST and SS_LOCAL_PORT
+	var ssRemote, ssLocal string
+	srh, srhOk := os.LookupEnv("SS_REMOTE_HOST")
+	srp, srpOk := os.LookupEnv("SS_REMOTE_PORT")
+	slh, slhOk := os.LookupEnv("SS_LOCAL_HOST")
+	slp, slpOk := os.LookupEnv("SS_LOCAL_PORT")
+	spo, spoOk := os.LookupEnv("SS_PLUGIN_OPTIONS")
+
+	//set flags from SS_PLUGIN_OPTIONS
+	if spoOk {
 		commandLineOption := make([]string, 0)
-		op := strings.Split(o, ";")
+		op := strings.Split(spo, ";")
 		for _, so := range op {
 			optionPair := strings.Split(so, "=")
 			switch len(optionPair) {
@@ -93,24 +101,20 @@ func main() {
 		}
 		//from SS_PLUGIN_OPTIONS
 		flag.CommandLine.Parse(commandLineOption)
+	}
 
-		//parse addtional command from os.Args, such as on android platform
+	pluginMode := srhOk || srpOk || slhOk || slpOk || spoOk //if any env exist, we are in plugin mode
+	if pluginMode {
+		//parse and overwrite addtional commands from os.Args, `fast-open` and `V` (android)
 		additional := flag.NewFlagSet("additional", flag.ContinueOnError)
 		tfo = additional.Bool("fast-open", false, "")
 		vpnMode = additional.Bool("V", false, "")
 		additional.Parse(os.Args[1:])
-
 	} else {
 		//from args
 		flag.Parse()
 	}
 
-	//SS_REMOTE_HOST, SS_REMOTE_PORT, SS_LOCAL_HOST and SS_LOCAL_PORT
-	var ssRemote, ssLocal string
-	srh, srhOk := os.LookupEnv("SS_REMOTE_HOST")
-	srp, srpOk := os.LookupEnv("SS_REMOTE_PORT")
-	slh, slhOk := os.LookupEnv("SS_LOCAL_HOST")
-	slp, slpOk := os.LookupEnv("SS_LOCAL_PORT")
 	if srhOk && srpOk && slhOk && slpOk {
 		ssRemote = net.JoinHostPort(srh, srp)
 		ssLocal = net.JoinHostPort(slh, slp)
