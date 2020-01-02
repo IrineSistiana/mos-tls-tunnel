@@ -47,9 +47,6 @@ var (
 	buffSize           = flag.Int("buff", 4, "Size of io buffer for each connection (kb)")
 	timeout            = flag.Duration("timeout", 5*time.Minute, "the idle timeout for connections")
 
-	buffPool   *sync.Pool
-	wsBuffPool *sync.Pool
-
 	//SIP003 not support flag, dont remove it
 	tfo = flag.Bool("fast-open", false, "Not support yet, reserved")
 	//SIP003 android
@@ -60,6 +57,11 @@ var (
 
 	//debug only
 	verbose = flag.Bool("verbose", false, "more log")
+)
+
+var (
+	buffPool   *sync.Pool
+	wsBuffPool *sync.Pool
 )
 
 const (
