@@ -47,6 +47,10 @@ var (
 	buffSize           = flag.Int("buff", 4, "Size of io buffer for each connection (kb)")
 	timeout            = flag.Duration("timeout", 5*time.Minute, "the idle timeout for connections")
 
+	//tcp options
+	noDelay = flag.Bool("no-delay", false, "Enable TCP_NODELAY")
+	mss     = flag.Int("mss", 0, "The maximum segment size for outgoing TCP packets, linux only")
+
 	//SIP003 not support flag, dont remove it
 	tfo = flag.Bool("fast-open", false, "Not support yet, reserved")
 	//SIP003 android

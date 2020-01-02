@@ -1,4 +1,4 @@
-// +build !android
+// +build !android,!linux,!windows
 
 // Copyright (c) 2019 IrineSistiana
 //

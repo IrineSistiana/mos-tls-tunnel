@@ -1,4 +1,4 @@
-// +build android
+// +build linux android
 
 // Copyright (c) 2019 IrineSistiana
 //
@@ -18,56 +18,40 @@
 // COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 package main
 
 import (
-	"syscall"
-
 	"github.com/sirupsen/logrus"
-
 	"golang.org/x/sys/unix"
 )
 
-func getControlFunc() func(network, address string, c syscall.RawConn) error {
-	return func(network, address string, c syscall.RawConn) error {
-		if *vpnMode {
-			if err := c.Control(sendFdToBypass); err != nil {
-				return err
-			}
+//TCP_MAXSEG TCP_NODELAY SO_SND/RCVBUF etc..
+func setSockOpt(uintFd uintptr) {
+	fd := int(uintFd)
+
+	if *noDelay {
+		err = unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_NODELAY, 1)
+		if err != nil {
+			logrus.Print(err)
 		}
-		return c.Control(setSockOpt)
 	}
-}
 
-var protectPath = "protect_path"
-var unixAddr = &unix.SockaddrUnix{Name: protectPath}
-var unixTimeout = &unix.Timeval{Sec: 3, Usec: 0}
+	if *mss > 0 {
+		err = unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_MAXSEG, *mss)
+		if err != nil {
+			logrus.Print(err)
+		}
+	}
 
-func sendFdToBypass(fd uintptr) {
-
-	socket, err := unix.Socket(unix.AF_UNIX, unix.SOCK_STREAM, 0)
+	err = unix.SetsockoptInt(socket, unix.SOL_SOCKET, unix.SO_SNDBUF, *buffSize*1024)
 	if err != nil {
 		logrus.Print(err)
-		return
 	}
-	defer unix.Close(socket)
-
-	unix.SetsockoptTimeval(socket, unix.SOL_SOCKET, unix.SO_RCVTIMEO, unixTimeout)
-	unix.SetsockoptTimeval(socket, unix.SOL_SOCKET, unix.SO_SNDTIMEO, unixTimeout)
-
-	err = unix.Connect(socket, unixAddr)
+	err = unix.SetsockoptInt(socket, unix.SOL_SOCKET, unix.SO_RCVBUF, *buffSize*1024)
 	if err != nil {
 		logrus.Print(err)
-		return
 	}
 
-	//send fd
-	if err := unix.Sendmsg(socket, nil, unix.UnixRights(int(fd)), nil, 0); err != nil {
-		logrus.Print(err)
-		return
-	}
-
-	//Read test ???
-	unix.Read(socket, make([]byte, 1))
 	return
 }

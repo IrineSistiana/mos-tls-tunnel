@@ -19,7 +19,7 @@
 
 [[projects]]
   digest = "1:04457f9f6f3ffc5fea48e71d62f2ca256637dee0a04d710288e27e05c8b41976"
-  name = "github.com/sirupsen/logrus.rus"
+  name = "github.com/sirupsen/logrus"
   packages = ["."]
   pruneopts = "UT"
   revision = "839c75faf7f98a33d445d181f3018b5c3409a45e"
@@ -27,9 +27,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:21fdc4d02e91b37ce39866d3a949a4b54220f3acb839ccb0b3ae0497df638903"
+  digest = "1:ae1adb333e7a5c1d131ab92f85347600089f0790a9fd23b870bf0f52466123fb"
   name = "golang.org/x/sys"
-  packages = ["unix"]
+  packages = [
+    "unix",
+    "windows",
+  ]
   pruneopts = "UT"
   revision = "04cbcbbfeed8aa0b2b010b2ddab558e9f717fd3e"
 
@@ -38,8 +41,9 @@
   analyzer-version = 1
   input-imports = [
     "github.com/gorilla/websocket",
-    "github.com/sirupsen/logrus.rus",
+    "github.com/sirupsen/logrus",
     "golang.org/x/sys/unix",
+    "golang.org/x/sys/windows",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
