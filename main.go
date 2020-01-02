@@ -50,9 +50,8 @@ var (
 	//tcp options
 	noDelay = flag.Bool("no-delay", false, "Enable TCP_NODELAY")
 	mss     = flag.Int("mss", 0, "The maximum segment size for outgoing TCP packets, linux only")
+	tfo     = flag.Bool("fast-open", false, "Enable TCP fast open, only support linux with kernel version 4.11+")
 
-	//SIP003 not support flag, dont remove it
-	tfo = flag.Bool("fast-open", false, "Enable TCP fast open, only support linux with kernel version 4.11+")
 	//SIP003 android
 	vpnMode = flag.Bool("V", false, "VPN mode, used in android system only")
 
