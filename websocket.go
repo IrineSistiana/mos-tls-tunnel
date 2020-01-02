@@ -23,8 +23,8 @@ func dialWS(dialer *net.Dialer, urlStr string, tlsConfig *tls.Config) (net.Conn,
 		TLSClientConfig: tlsConfig,
 		NetDial:         internelDial,
 
-		ReadBufferSize:   *buffSize * 1024,
-		WriteBufferSize:  *buffSize * 1024,
+		ReadBufferSize:   wsBuffSize,
+		WriteBufferSize:  wsBuffSize,
 		WriteBufferPool:  wsBuffPool,
 		HandshakeTimeout: handShakeTimeout,
 	}

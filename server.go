@@ -61,7 +61,7 @@ func doServer() {
 		upgrader := websocket.Upgrader{
 			HandshakeTimeout: handShakeTimeout,
 			ReadBufferSize:   0, // buffers allocated by the HTTP server are used
-			WriteBufferSize:  *buffSize * 1024,
+			WriteBufferSize:  wsBuffSize,
 			WriteBufferPool:  wsBuffPool,
 		}
 		http.Handle(*path, wsHandler{u: upgrader})

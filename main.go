@@ -44,7 +44,7 @@ var (
 	certFile           = flag.String("cert", "", "Path to cert, used by server mode. If both key and cert is empty, a self signed certificate will be used")
 	serverName         = flag.String("n", "", "Server name, used to verify the hostname. It is also included in the client's TLS and WSS handshake to support virtual hosting unless it is an IP address.")
 	insecureSkipVerify = flag.Bool("sv", false, "Skip verify, client won't verify the server's certificate chain and host name. In this mode, your connections are susceptible to man-in-the-middle attacks. Use it with caution.")
-	buffSize           = flag.Int("buff", 4, "Size of io buffer for each connection (kb)")
+	buffSizeKB         = flag.Int("buff", 512, "The maximum socket buffer in KB")
 	timeout            = flag.Duration("timeout", 5*time.Minute, "the idle timeout for connections")
 
 	//tcp options
@@ -66,6 +66,10 @@ var (
 var (
 	buffPool   *sync.Pool
 	wsBuffPool *sync.Pool
+
+	tcpBuffSize    int
+	wsBuffSize     int
+	ioCopyBuffSize int
 )
 
 const (
@@ -124,7 +128,7 @@ func main() {
 		logrus.Fatal("no remote server address")
 	}
 
-	if *buffSize <= 0 {
+	if *buffSizeKB <= 0 {
 		logrus.Fatal("size of io buffer must at least 1kb")
 	}
 
@@ -136,11 +140,20 @@ func main() {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
+	//set buffers' size
+	wsBuffSize = 64 * 1024
+	ioCopyBuffSize = 64 * 1024
+	if *buffSizeKB < 64 {
+		wsBuffSize = *buffSizeKB * 1024
+		ioCopyBuffSize = *buffSizeKB * 1024
+	}
+	tcpBuffSize = *buffSizeKB * 1024
+
 	buffPool = &sync.Pool{New: func() interface{} {
-		return make([]byte, *buffSize*1024)
+		return make([]byte, ioCopyBuffSize)
 	}}
 
-	//this buff pool is used as a websocket write buffPool with size = *buffSize*1024
+	//this buff pool is used as a websocket write buffPool with size = wsBuffSize
 	wsBuffPool = &sync.Pool{New: func() interface{} {
 		return nil
 	}}
