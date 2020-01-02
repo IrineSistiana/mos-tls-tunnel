@@ -51,11 +51,11 @@ func setSockOpt(uintFd uintptr) {
 		}
 	}
 
-	err := unix.SetsockoptInt(socket, unix.SOL_SOCKET, unix.SO_SNDBUF, *buffSize*1024)
+	err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_SNDBUF, tcpBuffSize)
 	if err != nil {
 		logrus.Print(err)
 	}
-	err = unix.SetsockoptInt(socket, unix.SOL_SOCKET, unix.SO_RCVBUF, *buffSize*1024)
+	err = unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_RCVBUF, tcpBuffSize)
 	if err != nil {
 		logrus.Print(err)
 	}
