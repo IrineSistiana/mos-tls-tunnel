@@ -49,7 +49,7 @@ var (
 
 	//tcp options
 	noDelay = flag.Bool("no-delay", false, "Enable TCP_NODELAY")
-	mss     = flag.Int("mss", 0, "The maximum segment size for outgoing TCP packets, linux only")
+	mss     = flag.Int("mss", 0, "TCP_MAXSEG, the maximum segment size for outgoing TCP packets, linux only")
 	tfo     = flag.Bool("fast-open", false, "Enable TCP fast open, only support linux with kernel version 4.11+")
 
 	//SIP003 android, init it later
