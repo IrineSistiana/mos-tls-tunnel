@@ -52,11 +52,11 @@ func setSockOpt(uintptrFd uintptr) {
 	// 	windows.SetsockoptInt(fd, windows.IPPROTO_TCP, windows.TCP_MAXSEG, *mss)
 	// }
 
-	err = windows.SetsockoptInt(fd, windows.SOL_SOCKET, windows.SO_SNDBUF, tcpBuffSize)
+	err = windows.SetsockoptInt(fd, windows.SOL_SOCKET, windows.SO_SNDBUF, tcp_SO_SNDBUF)
 	if err != nil {
 		logrus.Errorf("setsockopt SO_SNDBUF, %v", err)
 	}
-	err = windows.SetsockoptInt(fd, windows.SOL_SOCKET, windows.SO_RCVBUF, tcpBuffSize)
+	err = windows.SetsockoptInt(fd, windows.SOL_SOCKET, windows.SO_RCVBUF, tcp_SO_RCVBUF)
 	if err != nil {
 		logrus.Errorf("setsockopt SO_RCVBUF, %v", err)
 	}

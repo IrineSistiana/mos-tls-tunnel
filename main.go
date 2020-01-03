@@ -60,15 +60,19 @@ var (
 
 	//debug only
 	verbose = flag.Bool("verbose", false, "more log")
+
+	//is program running as a plugin. Will be initialized later
+	modePlugin bool
 )
 
 var (
 	buffPool   *sync.Pool
 	wsBuffPool *sync.Pool
 
-	tcpBuffSize    int
 	wsBuffSize     int
 	ioCopyBuffSize int
+	tcp_SO_SNDBUF  int
+	tcp_SO_RCVBUF  int
 )
 
 const (
@@ -103,8 +107,8 @@ func main() {
 		flag.CommandLine.Parse(commandLineOption)
 	}
 
-	pluginMode := srhOk || srpOk || slhOk || slpOk || spoOk //if any env exist, we are in plugin mode
-	if pluginMode {
+	modePlugin = srhOk || srpOk || slhOk || slpOk || spoOk //if any env exist, we are in plugin mode
+	if modePlugin {
 		//parse and overwrite addtional commands from os.Args, `fast-open` and `V` (android)
 		additional := flag.NewFlagSet("additional", flag.ContinueOnError)
 		tfo = additional.Bool("fast-open", false, "")
@@ -150,7 +154,9 @@ func main() {
 		wsBuffSize = *buffSizeKB * 1024
 		ioCopyBuffSize = *buffSizeKB * 1024
 	}
-	tcpBuffSize = *buffSizeKB * 1024
+
+	tcp_SO_SNDBUF = *buffSizeKB * 1024
+	tcp_SO_RCVBUF = *buffSizeKB * 1024
 
 	buffPool = &sync.Pool{New: func() interface{} {
 		return make([]byte, ioCopyBuffSize)
