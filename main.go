@@ -44,13 +44,13 @@ var (
 	certFile           = flag.String("cert", "", "Path to cert, used by server mode. If both key and cert is empty, a self signed certificate will be used")
 	serverName         = flag.String("n", "", "Server name, used to verify the hostname. It is also included in the client's TLS and WSS handshake to support virtual hosting unless it is an IP address.")
 	insecureSkipVerify = flag.Bool("sv", false, "Skip verify, client won't verify the server's certificate chain and host name. In this mode, your connections are susceptible to man-in-the-middle attacks. Use it with caution.")
-	buffSizeKB         = flag.Int("buff", 512, "The maximum socket buffer in KB")
-	timeout            = flag.Duration("timeout", 5*time.Minute, "the idle timeout for connections")
 
 	//tcp options
-	noDelay = flag.Bool("no-delay", false, "Enable TCP_NODELAY")
-	mss     = flag.Int("mss", 0, "TCP_MAXSEG, the maximum segment size for outgoing TCP packets, linux only")
-	tfo     = flag.Bool("fast-open", false, "Enable TCP fast open, only support linux with kernel version 4.11+")
+	timeout    = flag.Duration("timeout", 5*time.Minute, "the idle timeout for connections")
+	buffSizeKB = flag.Int("buff", 512, "The maximum socket buffer in KB")
+	noDelay    = flag.Bool("no-delay", false, "Enable TCP_NODELAY")
+	mss        = flag.Int("mss", 0, "TCP_MAXSEG, the maximum segment size for outgoing TCP packets, linux only")
+	tfo        = flag.Bool("fast-open", false, "Enable TCP fast open, only support linux with kernel version 4.11+")
 
 	//SIP003 android, init it later
 	vpnMode *bool
@@ -60,12 +60,11 @@ var (
 
 	//debug only
 	verbose = flag.Bool("verbose", false, "more log")
-
-	//is program running as a plugin. Will be initialized later
-	modePlugin bool
 )
 
+//vars that will be initialized later
 var (
+	//buf things
 	buffPool   *sync.Pool
 	wsBuffPool *sync.Pool
 
@@ -73,6 +72,9 @@ var (
 	ioCopyBuffSize int
 	tcp_SO_SNDBUF  int
 	tcp_SO_RCVBUF  int
+
+	//is program running as a plugin
+	modePlugin bool
 )
 
 const (
