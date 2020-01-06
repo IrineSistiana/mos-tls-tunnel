@@ -20,6 +20,8 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
                 Path to key, used by server mode. If both key and cert is empty, a self signed certificate will be used
         -mss int
                 TCP_MAXSEG, the maximum segment size for outgoing TCP packets, linux only
+        -mux
+                Enable multiplex
         -n string
                 Server name, used to verify the hostname. It is also included in the client's TLS and WSS handshake to support virtual hosting unless it is an IP address.
         -no-delay
@@ -30,7 +32,7 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
                 Remote address
         -s    Server mode
         -sv
-                Skip verify, client won't verify the server's certificate chain and host name. In this mode, your connections are susceptible to man-in-the-middle attacks. Use it with caution.
+                Skip verify, client won't verify the server's certificate chain and host name. In this mode, your connections are susceptible to man-in-the-middle attacks. Use it with caution.    
         -timeout duration
                 the idle timeout for connections (default 5m0s)
         -verbose
@@ -41,6 +43,10 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
 ## WebSocket Secure
 
 mos-tls-tunnel support WebSocket Secure protocol (wss). WebSocket connections can be proxied by HTTP server such as Nginx,as well as most of CDNs that support WebSocket.
+
+## Multiplex (Experimental)
+
+mos-tls-tunnel support connection Multiplex (mux). It significantly reduces TCP handshake latency, at the cost of high throughput.
 
 ## SIP003
 
@@ -72,4 +78,5 @@ On the client, if server's certificate can't be verified. Option `sv` is require
 ## Open Source Components / Libraries
 
 * [gorilla/websocket](https://github.com/gorilla/websocket): [BSD-2-Clause](https://github.com/gorilla/websocket/blob/master/LICENSE)
-* [sirupsen\logrus](https://github.com/sirupsen/logrus): [MIT](https://github.com/sirupsen/logrus/blob/master/LICENSE)
+* [sirupsen/logrus](https://github.com/sirupsen/logrus): [MIT](https://github.com/sirupsen/logrus/blob/master/LICENSE)
+* [xtaci/smux](https://github.com/xtaci/smux): [MIT](https://github.com/xtaci/smux/blob/master/LICENSE)
