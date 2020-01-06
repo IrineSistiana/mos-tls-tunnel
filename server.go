@@ -30,6 +30,8 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/xtaci/smux"
+
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
@@ -81,20 +83,47 @@ func doServer() {
 			}
 			logrus.Debugf("leftConn from %s accepted", leftConn.RemoteAddr())
 
-			go func(leftConn net.Conn) {
-				defer leftConn.Close()
-				rightConn, err := net.Dial("tcp", *remoteAddr)
-				if err != nil {
-					logrus.Errorf("net.Dial, %v", err)
-					return
-				}
-				defer rightConn.Close()
-				logrus.Debugf("rightConn from %s to %s established", leftConn.RemoteAddr(), rightConn.RemoteAddr())
-
-				go openTunnel(rightConn, leftConn)
-				openTunnel(leftConn, rightConn)
-			}(leftConn)
+			if *mux {
+				go handleLeftMuxConn(leftConn)
+			} else {
+				go handleLeftConn(leftConn)
+			}
 		}
+	}
+}
+
+func handleLeftConn(leftConn net.Conn) {
+	defer leftConn.Close()
+	rightConn, err := net.Dial("tcp", *remoteAddr)
+	if err != nil {
+		logrus.Errorf("tcp failed to dial, %v", err)
+		return
+	}
+	defer rightConn.Close()
+
+	go openTunnel(leftConn, rightConn)
+	openTunnel(rightConn, leftConn)
+}
+
+func handleLeftMuxConn(leftConn net.Conn) {
+	defer leftConn.Close()
+
+	sess, err := smux.Server(leftConn, smuxConfig)
+	if err != nil {
+		logrus.Errorf("smux Server, %v", err)
+		return
+	}
+
+	for {
+		if sess.IsClosed() {
+			break
+		}
+		stream, err := sess.AcceptStream()
+		if err != nil {
+			logrus.Errorf("smux sess accept stream, %v", err)
+			return
+		}
+		go handleLeftConn(stream)
 	}
 }
 
@@ -104,23 +133,17 @@ type wsHandler struct {
 
 // ServeHTTP implements http.Handler interface
 func (h wsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	leftWSconn, err := h.u.Upgrade(w, r, nil)
+	leftWSConn, err := h.u.Upgrade(w, r, nil)
 	if err != nil {
 		logrus.Println(err)
 		return
 	}
-	defer leftWSconn.Close()
-
-	rightConn, err := net.Dial("tcp", *remoteAddr)
-	if err != nil {
-		logrus.Errorf("tcp failed to dial, %v", err)
-		return
+	leftConn := &wsConn{conn: leftWSConn}
+	if *mux {
+		handleLeftMuxConn(leftConn)
+	} else {
+		handleLeftConn(leftConn)
 	}
-	defer rightConn.Close()
-
-	leftconn := &wsConn{conn: leftWSconn}
-	go openTunnel(leftconn, rightConn)
-	openTunnel(rightConn, leftconn)
 }
 
 func generateCertificate() ([]tls.Certificate, error) {

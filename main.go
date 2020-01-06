@@ -31,6 +31,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/xtaci/smux"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -44,6 +46,7 @@ var (
 	certFile           = flag.String("cert", "", "Path to cert, used by server mode. If both key and cert is empty, a self signed certificate will be used")
 	serverName         = flag.String("n", "", "Server name, used to verify the hostname. It is also included in the client's TLS and WSS handshake to support virtual hosting unless it is an IP address.")
 	insecureSkipVerify = flag.Bool("sv", false, "Skip verify, client won't verify the server's certificate chain and host name. In this mode, your connections are susceptible to man-in-the-middle attacks. Use it with caution.")
+	mux                = flag.Bool("mux", false, "Enable multiplex")
 
 	//tcp options
 	timeout    = flag.Duration("timeout", 5*time.Minute, "the idle timeout for connections")
@@ -75,6 +78,15 @@ var (
 
 	//is program running as a plugin
 	modePlugin bool
+
+	//mux config
+	smuxConfig = &smux.Config{
+		KeepAliveInterval: 10 * time.Second,
+		KeepAliveTimeout:  30 * time.Second,
+		MaxFrameSize:      65535,
+		MaxReceiveBuffer:  512 * 1024 * 2,
+		MaxStreamBuffer:   512 * 1024,
+	}
 )
 
 const (

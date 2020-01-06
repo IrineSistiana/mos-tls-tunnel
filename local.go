@@ -22,8 +22,11 @@ package main
 import (
 	"crypto/tls"
 	"net"
+	"sync"
 
 	"github.com/sirupsen/logrus"
+	"github.com/xtaci/smux"
+	"golang.org/x/sync/singleflight"
 )
 
 var localTLSConfig *tls.Config
@@ -68,10 +71,8 @@ func doLocal() {
 
 }
 
-func forwardToServer(leftConn net.Conn) {
-	defer leftConn.Close()
+func newRightConn() (net.Conn, error) {
 	var rightConn net.Conn
-
 	d := &net.Dialer{
 		Control: getControlFunc(),
 		Timeout: handShakeTimeout,
@@ -80,19 +81,100 @@ func forwardToServer(leftConn net.Conn) {
 	if *modeWSS { // websocket enabled
 		conn, err := dialWS(d, wssURL, localTLSConfig)
 		if err != nil {
-			logrus.Errorf("dial wss connection failed, %v", err)
-			return
+			return nil, err
 		}
-		defer conn.Close()
 		rightConn = conn
 	} else {
 		conn, err := tls.DialWithDialer(d, "tcp", *remoteAddr, localTLSConfig)
 		if err != nil {
-			logrus.Errorf("failed to establish TLS connection, %v", err)
+			return nil, err
+		}
+		rightConn = conn
+	}
+	return rightConn, nil
+}
+
+type smuxSessPool struct {
+	singleflight.Group
+	sync.Mutex
+	pool sync.Map
+}
+
+var defaultSessPool = &smuxSessPool{}
+
+var keySmuxOpenSess = "keySmuxOpenSess"
+var maxConnPerChannel = 8
+
+func (p *smuxSessPool) getAvailableSess() (*smux.Session, error) {
+	var availableSess *smux.Session
+
+	try := func(key, value interface{}) bool {
+		sess := key.(*smux.Session)
+		if sess.IsClosed() {
+			p.pool.Delete(sess)
+			logrus.Debugf("deleted closed sess %p", sess)
+			return true
+		}
+
+		if sess.NumStreams() < maxConnPerChannel {
+			availableSess = sess
+			return false
+		}
+		return true
+	}
+
+	p.pool.Range(try)
+
+	if availableSess == nil {
+		sess, err := dialSess()
+		if err != nil {
+			return nil, err
+		}
+		p.pool.Store(sess, nil)
+		availableSess = sess
+	}
+	return availableSess, nil
+}
+
+func dialSess() (*smux.Session, error) {
+	rightConn, err := newRightConn()
+	if err != nil {
+		return nil, err
+	}
+	sess, err := smux.Client(rightConn, smuxConfig)
+	if err != nil {
+		rightConn.Close()
+		return nil, err
+	}
+	logrus.Debugf("new sess %p opend", sess)
+	return sess, nil
+}
+
+func (p *smuxSessPool) getStream() (*smux.Stream, error) {
+	sess, err := p.getAvailableSess()
+	if err != nil {
+		return nil, err
+	}
+	return sess.OpenStream()
+}
+
+func forwardToServer(leftConn net.Conn) {
+	defer leftConn.Close()
+	var rightConn net.Conn
+	var err error
+
+	if *mux {
+		rightConn, err = defaultSessPool.getStream()
+		if err != nil {
+			logrus.Errorf("mux getStream: %v", err)
 			return
 		}
-		defer conn.Close()
-		rightConn = conn
+	} else {
+		rightConn, err = newRightConn()
+		if err != nil {
+			logrus.Errorf("connect to remote: %v", err)
+			return
+		}
 	}
 	logrus.Debugf("rightConn from %s to %s established", leftConn.RemoteAddr(), rightConn.RemoteAddr())
 

@@ -26,6 +26,22 @@
   version = "v1.4.2"
 
 [[projects]]
+  digest = "1:170e99cd7c91ce7bb7c34ea2d1b8a185c5bbfe9fc780eb056a0926e5db367d0a"
+  name = "github.com/xtaci/smux"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "c803f50c43b8e683e3ff99ee5009b11775c8e863"
+  version = "v2.1.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:4afdcaf2f776edc7fc481d0c4cc5a1ebae7e407076690c8c8dbab6f287c31c76"
+  name = "golang.org/x/sync"
+  packages = ["singleflight"]
+  pruneopts = "UT"
+  revision = "cd5d95a43a6e21273425c7ae415d3df9ea832eeb"
+
+[[projects]]
   branch = "master"
   digest = "1:ae1adb333e7a5c1d131ab92f85347600089f0790a9fd23b870bf0f52466123fb"
   name = "golang.org/x/sys"
@@ -42,6 +58,8 @@
   input-imports = [
     "github.com/gorilla/websocket",
     "github.com/sirupsen/logrus",
+    "github.com/xtaci/smux",
+    "golang.org/x/sync/singleflight",
     "golang.org/x/sys/unix",
     "golang.org/x/sys/windows",
   ]
