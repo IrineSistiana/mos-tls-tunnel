@@ -103,7 +103,6 @@ type smuxSessPool struct {
 var defaultSessPool = &smuxSessPool{}
 
 var keySmuxOpenSess = "keySmuxOpenSess"
-var maxConnPerChannel = 8
 
 func (p *smuxSessPool) getAvailableSess() (*smux.Session, error) {
 	var availableSess *smux.Session
@@ -116,7 +115,7 @@ func (p *smuxSessPool) getAvailableSess() (*smux.Session, error) {
 			return true
 		}
 
-		if sess.NumStreams() < maxConnPerChannel {
+		if sess.NumStreams() < muxMaxConnPerChannel {
 			availableSess = sess
 			return false
 		}
@@ -141,7 +140,7 @@ func dialSess() (*smux.Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	sess, err := smux.Client(rightConn, smuxConfig)
+	sess, err := smux.Client(rightConn, defaultSmuxConfig)
 	if err != nil {
 		rightConn.Close()
 		return nil, err

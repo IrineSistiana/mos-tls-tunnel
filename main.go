@@ -80,17 +80,12 @@ var (
 	modePlugin bool
 
 	//mux config
-	smuxConfig = &smux.Config{
-		KeepAliveInterval: 10 * time.Second,
-		KeepAliveTimeout:  30 * time.Second,
-		MaxFrameSize:      65535,
-		MaxReceiveBuffer:  512 * 1024 * 2,
-		MaxStreamBuffer:   512 * 1024,
-	}
+	defaultSmuxConfig *smux.Config
 )
 
 const (
-	handShakeTimeout = time.Second * 10
+	handShakeTimeout     = time.Second * 10
+	muxMaxConnPerChannel = 8
 )
 
 func main() {
@@ -171,6 +166,14 @@ func main() {
 
 	tcp_SO_SNDBUF = *buffSizeKB * 1024
 	tcp_SO_RCVBUF = *buffSizeKB * 1024
+
+	defaultSmuxConfig = &smux.Config{
+		KeepAliveInterval: 10 * time.Second,
+		KeepAliveTimeout:  30 * time.Second,
+		MaxFrameSize:      65535, //this is the max of this max
+		MaxReceiveBuffer:  *buffSizeKB * 1024 * muxMaxConnPerChannel,
+		MaxStreamBuffer:   *buffSizeKB * 1024,
+	}
 
 	buffPool = &sync.Pool{New: func() interface{} {
 		return make([]byte, ioCopyBuffSize)

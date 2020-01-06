@@ -108,7 +108,7 @@ func handleLeftConn(leftConn net.Conn) {
 func handleLeftMuxConn(leftConn net.Conn) {
 	defer leftConn.Close()
 
-	sess, err := smux.Server(leftConn, smuxConfig)
+	sess, err := smux.Server(leftConn, defaultSmuxConfig)
 	if err != nil {
 		logrus.Errorf("smux Server, %v", err)
 		return
