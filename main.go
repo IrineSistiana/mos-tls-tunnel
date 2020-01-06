@@ -85,7 +85,7 @@ var (
 
 const (
 	handShakeTimeout     = time.Second * 10
-	muxMaxConnPerChannel = 8
+	muxMaxConnPerChannel = 4
 )
 
 func main() {
