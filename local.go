@@ -96,7 +96,6 @@ func newRightConn() (net.Conn, error) {
 
 type smuxSessPool struct {
 	singleflight.Group
-	sync.Mutex
 	pool sync.Map
 }
 
@@ -104,8 +103,27 @@ var defaultSessPool = &smuxSessPool{}
 
 var keySmuxOpenSess = "keySmuxOpenSess"
 
-func (p *smuxSessPool) getAvailableSess() (*smux.Session, error) {
-	var availableSess *smux.Session
+func (p *smuxSessPool) dialNewSess() (*smux.Session, error) {
+	rightConn, err := newRightConn()
+	if err != nil {
+		return nil, err
+	}
+	sess, err := smux.Client(rightConn, defaultSmuxConfig)
+	if err != nil {
+		rightConn.Close()
+		return nil, err
+	}
+	p.pool.Store(sess, nil)
+	logrus.Debugf("new sess %p opend", sess)
+	return sess, nil
+}
+
+func (p *smuxSessPool) dialNewSessSF() (interface{}, error) {
+	return p.dialNewSess()
+}
+
+func (p *smuxSessPool) getStream() (*smux.Stream, error) {
+	var stream *smux.Stream
 
 	try := func(key, value interface{}) bool {
 		sess := key.(*smux.Session)
@@ -116,7 +134,14 @@ func (p *smuxSessPool) getAvailableSess() (*smux.Session, error) {
 		}
 
 		if sess.NumStreams() < muxMaxConnPerChannel {
-			availableSess = sess
+			// try
+			var er error
+			stream, er = sess.OpenStream()
+			if er != nil {
+				p.pool.Delete(sess)
+				logrus.Errorf("deleted err sess %p: open stream: %v", sess, er)
+				return true
+			}
 			return false
 		}
 		return true
@@ -124,37 +149,14 @@ func (p *smuxSessPool) getAvailableSess() (*smux.Session, error) {
 
 	p.pool.Range(try)
 
-	if availableSess == nil {
-		sess, err := dialSess()
+	if stream == nil {
+		sess, err, _ := p.Do(keySmuxOpenSess, p.dialNewSessSF)
 		if err != nil {
 			return nil, err
 		}
-		p.pool.Store(sess, nil)
-		availableSess = sess
+		return sess.(*smux.Session).OpenStream()
 	}
-	return availableSess, nil
-}
-
-func dialSess() (*smux.Session, error) {
-	rightConn, err := newRightConn()
-	if err != nil {
-		return nil, err
-	}
-	sess, err := smux.Client(rightConn, defaultSmuxConfig)
-	if err != nil {
-		rightConn.Close()
-		return nil, err
-	}
-	logrus.Debugf("new sess %p opend", sess)
-	return sess, nil
-}
-
-func (p *smuxSessPool) getStream() (*smux.Stream, error) {
-	sess, err := p.getAvailableSess()
-	if err != nil {
-		return nil, err
-	}
-	return sess.OpenStream()
+	return stream, nil
 }
 
 func forwardToServer(leftConn net.Conn) {
