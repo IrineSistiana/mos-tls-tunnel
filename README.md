@@ -48,6 +48,12 @@ mos-tls-tunnel support WebSocket Secure protocol (wss). WebSocket connections ca
 
 mos-tls-tunnel support connection Multiplex (mux). It significantly reduces TCP handshake latency, at the cost of high throughput.
 
+## Self Signed Certificate
+
+On the server, if both `key` and `cert` is empty, a self signed certificate will be used. And the string from `n` will be certificate's `DNSName`. 
+
+On the client, if server's certificate can't be verified. Option `sv` is required. Use it with caution.
+
 ## SIP003
 
 mos-tls-tunnel support shadowsocks [SIP003](https://shadowsocks.org/en/spec/Plugin.html)
@@ -69,11 +75,9 @@ On the client:
         ss-local --plugin mos-tls-tunnel --plugin-opts "wss,sv;n=www.cloudflare.com,buff=32"
         ...
 
-## Self Signed Certificate
+## Android plugin
 
-On the server, if both `key` and `cert` is empty, a self signed certificate will be used. And the string from `n` will be certificate's `DNSName`. 
-
-On the client, if server's certificate can't be verified. Option `sv` is required. Use it with caution.
+The Android plugin project is maintained here: [mostunnel-android](https://github.com/IrineSistiana/mostunnel-android)
 
 ## Open Source Components / Libraries
 
