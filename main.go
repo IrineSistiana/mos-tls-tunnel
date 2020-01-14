@@ -158,11 +158,7 @@ func main() {
 
 	//set buffers' size
 	wsBuffSize = 64 * 1024
-	ioCopyBuffSize = 64 * 1024
-	if *buffSizeKB < 64 {
-		wsBuffSize = *buffSizeKB * 1024
-		ioCopyBuffSize = *buffSizeKB * 1024
-	}
+	ioCopyBuffSize = 16 * 1024
 
 	tcp_SO_SNDBUF = *buffSizeKB * 1024
 	tcp_SO_RCVBUF = *buffSizeKB * 1024
