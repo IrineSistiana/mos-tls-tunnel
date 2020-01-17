@@ -23,10 +23,16 @@ import (
 	"crypto/tls"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/xtaci/smux"
 	"golang.org/x/sync/singleflight"
+)
+
+const (
+	muxCheckIdleInterval = time.Second * 2
+	muxSessIdleTimeout   = time.Second * 30
 )
 
 var localTLSConfig *tls.Config
@@ -113,6 +119,33 @@ func (p *smuxSessPool) dialNewSess() (*smux.Session, error) {
 		rightConn.Close()
 		return nil, err
 	}
+
+	// this go routine closes sess if it has been idle for a long time
+	go func() {
+		ticker := time.NewTicker(muxCheckIdleInterval)
+		defer ticker.Stop()
+		lastBusy := time.Now()
+		for {
+			if sess.IsClosed() {
+				return
+			}
+
+			select {
+			case now := <-ticker.C:
+				if sess.NumStreams() > 0 {
+					lastBusy = now
+					continue
+				}
+
+				if now.Sub(lastBusy) > muxSessIdleTimeout {
+					sess.Close()
+					logrus.Debugf("sess %p closed, idle timeout", sess)
+					return
+				}
+			}
+		}
+	}()
+
 	p.pool.Store(sess, nil)
 	logrus.Debugf("new sess %p opend", sess)
 	return sess, nil
