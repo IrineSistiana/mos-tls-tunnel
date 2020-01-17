@@ -165,9 +165,9 @@ func main() {
 	defaultSmuxConfig = &smux.Config{
 		KeepAliveInterval: 10 * time.Second,
 		KeepAliveTimeout:  30 * time.Second,
-		MaxFrameSize:      65535, //this is the max of this max
-		MaxReceiveBuffer:  *buffSizeKB * 1024 * *mux,
-		MaxStreamBuffer:   *buffSizeKB * 1024,
+		MaxFrameSize:      16 * 1024,
+		MaxReceiveBuffer:  512 * 1024,
+		MaxStreamBuffer:   64 * 1024,
 	}
 
 	buffPool = &sync.Pool{New: func() interface{} {
