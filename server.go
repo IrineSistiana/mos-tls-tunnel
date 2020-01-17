@@ -83,7 +83,7 @@ func doServer() {
 			}
 			logrus.Debugf("leftConn from %s accepted", leftConn.RemoteAddr())
 
-			if *mux {
+			if *mux > 0 {
 				go handleLeftMuxConn(leftConn)
 			} else {
 				go handleLeftConn(leftConn)
@@ -139,7 +139,7 @@ func (h wsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	leftConn := &wsConn{conn: leftWSConn}
-	if *mux {
+	if *mux > 0 {
 		handleLeftMuxConn(leftConn)
 	} else {
 		handleLeftConn(leftConn)

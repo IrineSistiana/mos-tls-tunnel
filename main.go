@@ -46,7 +46,7 @@ var (
 	certFile           = flag.String("cert", "", "Path to cert, used by server mode. If both key and cert is empty, a self signed certificate will be used")
 	serverName         = flag.String("n", "", "Server name, used to verify the hostname. It is also included in the client's TLS and WSS handshake to support virtual hosting unless it is an IP address.")
 	insecureSkipVerify = flag.Bool("sv", false, "Skip verify, client won't verify the server's certificate chain and host name. In this mode, your connections are susceptible to man-in-the-middle attacks. Use it with caution.")
-	mux                = flag.Bool("mux", false, "Enable multiplex")
+	mux                = flag.Int("mux", 0, "Enable multiplex, and set the max number of multiplexed connections in one ture TCP connection")
 
 	//tcp options
 	timeout    = flag.Duration("timeout", 5*time.Minute, "the idle timeout for connections")
@@ -84,8 +84,7 @@ var (
 )
 
 const (
-	handShakeTimeout     = time.Second * 10
-	muxMaxConnPerChannel = 4
+	handShakeTimeout = time.Second * 10
 )
 
 func main() {
@@ -167,7 +166,7 @@ func main() {
 		KeepAliveInterval: 10 * time.Second,
 		KeepAliveTimeout:  30 * time.Second,
 		MaxFrameSize:      65535, //this is the max of this max
-		MaxReceiveBuffer:  *buffSizeKB * 1024 * muxMaxConnPerChannel,
+		MaxReceiveBuffer:  *buffSizeKB * 1024 * *mux,
 		MaxStreamBuffer:   *buffSizeKB * 1024,
 	}
 
