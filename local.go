@@ -166,7 +166,7 @@ func (p *smuxSessPool) getStream() (*smux.Stream, error) {
 			return true
 		}
 
-		if sess.NumStreams() <= *mux {
+		if sess.NumStreams() < *muxMaxStream {
 			// try
 			var er error
 			stream, er = sess.OpenStream()
@@ -197,7 +197,7 @@ func forwardToServer(leftConn net.Conn) {
 	var rightConn net.Conn
 	var err error
 
-	if *mux > 0 {
+	if *mux {
 		rightConn, err = defaultSessPool.getStream()
 		if err != nil {
 			logrus.Errorf("mux getStream: %v", err)
