@@ -63,7 +63,7 @@ func doServer() {
 	listener := tls.NewListener(innerListener, tlsConfig)
 	logrus.Printf("plugin listen at %s", listener.Addr())
 
-	if *modeWSS {
+	if *enableWSS {
 		upgrader := websocket.Upgrader{
 			HandshakeTimeout: handShakeTimeout,
 			ReadBufferSize:   0, // buffers allocated by the HTTP server are used
@@ -83,7 +83,7 @@ func doServer() {
 			}
 			logrus.Debugf("leftConn from %s accepted", leftConn.RemoteAddr())
 
-			if *mux {
+			if *enableMux {
 				go handleLeftMuxConn(leftConn)
 			} else {
 				go handleLeftConn(leftConn)
@@ -139,7 +139,7 @@ func (h wsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	leftConn := &wsConn{conn: leftWSConn}
-	if *mux {
+	if *enableMux {
 		handleLeftMuxConn(leftConn)
 	} else {
 		handleLeftConn(leftConn)

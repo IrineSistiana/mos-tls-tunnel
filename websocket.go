@@ -34,9 +34,10 @@ type wsConn struct {
 	reader io.Reader
 }
 
-func dialWS(dialer *net.Dialer, urlStr string, tlsConfig *tls.Config) (net.Conn, error) {
+func dialWebsocketConn(dialer *net.Dialer, urlStr string, remoteAddr string, tlsConfig *tls.Config) (net.Conn, error) {
 	internelDial := func(network, addr string) (net.Conn, error) {
-		return dialer.Dial(network, *remoteAddr)
+		// overwrite url host addr
+		return dialer.Dial(network, remoteAddr)
 	}
 	d := websocket.Dialer{
 		TLSClientConfig: tlsConfig,

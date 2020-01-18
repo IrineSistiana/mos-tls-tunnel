@@ -39,7 +39,7 @@ func setSockOpt(uintptrFd uintptr) {
 	fd := windows.Handle(uintptrFd)
 	var err error
 
-	if *noDelay {
+	if *enableTCPNoDelay {
 		err = windows.SetsockoptInt(fd, windows.IPPROTO_TCP, windows.TCP_NODELAY, 1)
 		if err != nil {
 			logrus.Errorf("setsockopt TCP_NODELAY, %v", err)

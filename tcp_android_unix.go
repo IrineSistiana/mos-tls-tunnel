@@ -30,14 +30,14 @@ import (
 func setSockOpt(uintFd uintptr) {
 	fd := int(uintFd)
 
-	if *tfo {
+	if *enableTFO {
 		err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_FASTOPEN_CONNECT, 1)
 		if err != nil {
 			logrus.Errorf("setsockopt TCP_FASTOPEN_CONNECT, %v", err)
 		}
 	}
 
-	if *noDelay {
+	if *enableTCPNoDelay {
 		err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_NODELAY, 1)
 		if err != nil {
 			logrus.Errorf("setsockopt TCP_NODELAY, %v", err)

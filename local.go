@@ -53,7 +53,7 @@ func doLocal() {
 	var err error
 
 	//init ws config
-	if *modeWSS {
+	if *enableWSS {
 		wssURL = "wss://" + *serverName + *path
 	}
 
@@ -83,8 +83,8 @@ func newRightConn() (net.Conn, error) {
 		Timeout: handShakeTimeout,
 	}
 
-	if *modeWSS { // websocket enabled
-		conn, err := dialWS(d, wssURL, localTLSConfig)
+	if *enableWSS { // websocket enabled
+		conn, err := dialWebsocketConn(d, wssURL, *remoteAddr, localTLSConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -189,7 +189,7 @@ func forwardToServer(leftConn net.Conn) {
 	var rightConn net.Conn
 	var err error
 
-	if *mux {
+	if *enableMux {
 		rightConn, err = defaultSessPool.getStream()
 		if err != nil {
 			logrus.Errorf("mux getStream: %v", err)
