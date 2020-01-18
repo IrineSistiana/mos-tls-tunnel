@@ -50,14 +50,17 @@ func setSockOpt(uintFd uintptr) {
 			logrus.Errorf("setsockopt TCP_MAXSEG, %v", err)
 		}
 	}
-
-	err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_SNDBUF, tcp_SO_SNDBUF)
-	if err != nil {
-		logrus.Errorf("setsockopt SO_SNDBUF, %v", err)
+	if tcp_SO_SNDBUF > 0 {
+		err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_SNDBUF, tcp_SO_SNDBUF)
+		if err != nil {
+			logrus.Errorf("setsockopt SO_SNDBUF, %v", err)
+		}
 	}
-	err = unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_RCVBUF, tcp_SO_RCVBUF)
-	if err != nil {
-		logrus.Errorf("setsockopt SO_RCVBUF, %v", err)
+	if tcp_SO_RCVBUF > 0 {
+		err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_RCVBUF, tcp_SO_RCVBUF)
+		if err != nil {
+			logrus.Errorf("setsockopt SO_RCVBUF, %v", err)
+		}
 	}
 
 	return

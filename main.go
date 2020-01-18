@@ -50,7 +50,7 @@ var (
 	muxMaxStream       = flag.Int("max-stream", 4, "the max number of multiplexed streams in one ture TCP connection (Client only)")
 	//tcp options
 	timeout    = flag.Duration("timeout", 5*time.Minute, "the idle timeout for connections")
-	buffSizeKB = flag.Int("buff", 512, "The maximum socket buffer in KB")
+	buffSizeKB = flag.Int("buff", 0, "The maximum socket buffer in KB, value 0 means using system default")
 	noDelay    = flag.Bool("no-delay", false, "Enable TCP_NODELAY")
 	mss        = flag.Int("mss", 0, "TCP_MAXSEG, the maximum segment size for outgoing TCP packets, linux only")
 	tfo        = flag.Bool("fast-open", false, "Enable TCP fast open, only support linux with kernel version 4.11+")
@@ -143,10 +143,6 @@ func main() {
 		logrus.Fatal("no remote server address")
 	}
 
-	if *buffSizeKB <= 0 {
-		logrus.Fatal("size of io buffer must at least 1kb")
-	}
-
 	if *timeout <= 0 {
 		logrus.Fatal("timeout must at least 1 sec")
 	}
@@ -159,6 +155,7 @@ func main() {
 	wsBuffSize = 64 * 1024
 	ioCopyBuffSize = 16 * 1024
 
+	// 0 means use system default
 	tcp_SO_SNDBUF = *buffSizeKB * 1024
 	tcp_SO_RCVBUF = *buffSizeKB * 1024
 
