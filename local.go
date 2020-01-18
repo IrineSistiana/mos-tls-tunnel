@@ -27,7 +27,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/xtaci/smux"
-	"golang.org/x/sync/singleflight"
 )
 
 const (
@@ -101,13 +100,10 @@ func newRightConn() (net.Conn, error) {
 }
 
 type smuxSessPool struct {
-	singleflight.Group
 	pool sync.Map
 }
 
 var defaultSessPool = &smuxSessPool{}
-
-var keySmuxOpenSess = "keySmuxOpenSess"
 
 func (p *smuxSessPool) dialNewSess() (*smux.Session, error) {
 	rightConn, err := newRightConn()
@@ -151,10 +147,6 @@ func (p *smuxSessPool) dialNewSess() (*smux.Session, error) {
 	return sess, nil
 }
 
-func (p *smuxSessPool) dialNewSessSF() (interface{}, error) {
-	return p.dialNewSess()
-}
-
 func (p *smuxSessPool) getStream() (*smux.Stream, error) {
 	var stream *smux.Stream
 
@@ -183,11 +175,11 @@ func (p *smuxSessPool) getStream() (*smux.Stream, error) {
 	p.pool.Range(try)
 
 	if stream == nil {
-		sess, err, _ := p.Do(keySmuxOpenSess, p.dialNewSessSF)
+		sess, err := p.dialNewSess()
 		if err != nil {
 			return nil, err
 		}
-		return sess.(*smux.Session).OpenStream()
+		return sess.OpenStream()
 	}
 	return stream, nil
 }
