@@ -166,8 +166,8 @@ func main() {
 		KeepAliveInterval: 10 * time.Second,
 		KeepAliveTimeout:  30 * time.Second,
 		MaxFrameSize:      16 * 1024,
-		MaxReceiveBuffer:  512 * 1024,
-		MaxStreamBuffer:   64 * 1024,
+		MaxReceiveBuffer:  2048 * 1024,
+		MaxStreamBuffer:   512 * 1024,
 	}
 
 	buffPool = &sync.Pool{New: func() interface{} {
