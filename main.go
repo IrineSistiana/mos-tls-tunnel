@@ -39,7 +39,7 @@ import (
 var (
 	bindAddr           = flag.String("b", "127.0.0.1:1080", "Bind address")
 	remoteAddr         = flag.String("r", "", "Remote address")
-	modeServer         = flag.Bool("s", false, "Server mode")
+	modeServer         = flag.Bool("s", false, "Server mode, indicate program to run as a server")
 	modeWSS            = flag.Bool("wss", false, "Enable WebSocket Secure protocol")
 	path               = flag.String("path", "/", "WebSocket path")
 	keyFile            = flag.String("key", "", "Path to key, used by server mode. If both key and cert is empty, a self signed certificate will be used")
@@ -47,7 +47,7 @@ var (
 	serverName         = flag.String("n", "", "Server name, used to verify the hostname. It is also included in the client's TLS and WSS handshake to support virtual hosting unless it is an IP address.")
 	insecureSkipVerify = flag.Bool("sv", false, "Skip verify, client won't verify the server's certificate chain and host name. In this mode, your connections are susceptible to man-in-the-middle attacks. Use it with caution.")
 	mux                = flag.Bool("mux", false, "Enable multiplex")
-	muxMaxStream       = flag.Int("max-stream", 4, "the max number of multiplexed streams in one ture TCP connection")
+	muxMaxStream       = flag.Int("max-stream", 4, "the max number of multiplexed streams in one ture TCP connection (Client only)")
 	//tcp options
 	timeout    = flag.Duration("timeout", 5*time.Minute, "the idle timeout for connections")
 	buffSizeKB = flag.Int("buff", 512, "The maximum socket buffer in KB")
