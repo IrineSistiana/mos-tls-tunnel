@@ -39,27 +39,27 @@ import (
 var (
 	bindAddr           = flag.String("b", "127.0.0.1:1080", "Bind address")
 	remoteAddr         = flag.String("r", "", "Remote address")
-	modeServer         = flag.Bool("s", false, "Server mode, indicate program to run as a server")
+	modeServer         = flag.Bool("s", false, "Indicate program to run as a server. If absent, run as a client")
 	enableWSS          = flag.Bool("wss", false, "Enable WebSocket Secure protocol")
 	path               = flag.String("path", "/", "WebSocket path")
-	keyFile            = flag.String("key", "", "Path to key, used by server mode. If both key and cert is empty, a self signed certificate will be used")
-	certFile           = flag.String("cert", "", "Path to cert, used by server mode. If both key and cert is empty, a self signed certificate will be used")
-	serverName         = flag.String("n", "", "Server name, used to verify the hostname. It is also included in the client's TLS and WSS handshake to support virtual hosting unless it is an IP address.")
-	insecureSkipVerify = flag.Bool("sv", false, "Skip verify, client won't verify the server's certificate chain and host name. In this mode, your connections are susceptible to man-in-the-middle attacks. Use it with caution.")
+	keyFile            = flag.String("key", "", "(Server only) Path to key. If both key and cert is empty, a self signed certificate will be used")
+	certFile           = flag.String("cert", "", "(Server only) Path to cert. If both key and cert is empty, a self signed certificate will be used")
+	serverName         = flag.String("n", "", "Server name. Client will use it to verify the hostname and to support virtual hosting. Server will use it to generate self signed certificate")
+	insecureSkipVerify = flag.Bool("sv", false, "(Client only) Skip verify, client won't verify the server's certificate chain and host name.")
 	enableMux          = flag.Bool("mux", false, "Enable multiplex")
-	muxMaxStream       = flag.Int("max-stream", 4, "the max number of multiplexed streams in one ture TCP connection (Client only)")
+	muxMaxStream       = flag.Int("max-stream", 4, "(Client only) The max number of multiplexed streams in one ture TCP connection")
 	//tcp options
-	timeout          = flag.Duration("timeout", 5*time.Minute, "the idle timeout for connections")
-	buffSizeKB       = flag.Int("buff", 0, "The maximum socket buffer in KB, value 0 means using system default")
+	timeout          = flag.Duration("timeout", 5*time.Minute, "The idle timeout for connections")
+	buffSizeKB       = flag.Int("buff", 0, "The value of maximum socket buffer, tcp_SO_RCVBUF and tcp_SO_SNDBUF, in KB. 0 means using system default")
 	enableTCPNoDelay = flag.Bool("no-delay", false, "Enable TCP_NODELAY")
-	mss              = flag.Int("mss", 0, "TCP_MAXSEG, the maximum segment size for outgoing TCP packets, linux only")
-	enableTFO        = flag.Bool("fast-open", false, "Enable TCP fast open, only support linux with kernel version 4.11+")
+	mss              = flag.Int("mss", 0, "(Linux only) The value of TCP_MAXSEG. 0 means using system default")
+	enableTFO        = flag.Bool("fast-open", false, "(Linux kernel 4.11+ only) Enable TCP fast open")
 
 	//SIP003 android, init it later
 	vpnMode *bool
 
 	//debug only, used in android system to avoid dns lookup dead loop
-	fallbackDNS = flag.String("fallback-dns", "", "use this server instead of system default to resolve host name, must be an IP address.")
+	fallbackDNS = flag.String("fallback-dns", "", "use this server instead of system default to resolve host name in -b -r, must be an IP address.")
 
 	//debug only
 	verbose = flag.Bool("verbose", false, "more log")

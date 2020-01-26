@@ -152,9 +152,12 @@ func generateCertificate() ([]tls.Certificate, error) {
 		return nil, err
 	}
 	template := x509.Certificate{SerialNumber: big.NewInt(1)}
+
+	// set DNSNames
 	if len(*serverName) != 0 {
 		template.DNSNames = []string{*serverName}
 	}
+
 	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
 	if err != nil {
 		return nil, err
