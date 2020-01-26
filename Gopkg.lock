@@ -35,22 +35,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4afdcaf2f776edc7fc481d0c4cc5a1ebae7e407076690c8c8dbab6f287c31c76"
-  name = "golang.org/x/sync"
-  packages = ["singleflight"]
-  pruneopts = "UT"
-  revision = "cd5d95a43a6e21273425c7ae415d3df9ea832eeb"
-
-[[projects]]
-  branch = "master"
-  digest = "1:ae1adb333e7a5c1d131ab92f85347600089f0790a9fd23b870bf0f52466123fb"
+  digest = "1:6b58066101dc93c55b168b0c9f09b15ae700e6199709dfadddfc091413c6497f"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "UT"
-  revision = "04cbcbbfeed8aa0b2b010b2ddab558e9f717fd3e"
+  revision = "9fbb57f87de9ccfe3a99d4e3270ce8a926ebba4f"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -59,7 +51,6 @@
     "github.com/gorilla/websocket",
     "github.com/sirupsen/logrus",
     "github.com/xtaci/smux",
-    "golang.org/x/sync/singleflight",
     "golang.org/x/sys/unix",
     "golang.org/x/sys/windows",
   ]
