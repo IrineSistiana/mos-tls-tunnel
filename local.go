@@ -20,6 +20,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"net"
 	"sync"
@@ -57,7 +58,8 @@ func doLocal() {
 		wssURL = "wss://" + *serverName + *path
 	}
 
-	listener, err := net.Listen("tcp", *bindAddr)
+	listenConfig := net.ListenConfig{Control: getControlFunc(defaultLeftTCPConfig)}
+	listener, err := listenConfig.Listen(context.Background(), "tcp", *bindAddr)
 	if err != nil {
 		logrus.Fatalf("net.Listen: %v", err)
 	}
@@ -79,7 +81,7 @@ func doLocal() {
 func newRightConn() (net.Conn, error) {
 	var rightConn net.Conn
 	d := &net.Dialer{
-		Control: getControlFunc(),
+		Control: getControlFunc(defaultRightTCPConfig),
 		Timeout: handShakeTimeout,
 	}
 

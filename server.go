@@ -54,7 +54,7 @@ func doServer() {
 		tlsConfig.Certificates = []tls.Certificate{cer}
 	}
 
-	listenConfig := net.ListenConfig{Control: getControlFunc()}
+	listenConfig := net.ListenConfig{Control: getControlFunc(defaultLeftTCPConfig)}
 	innerListener, err := listenConfig.Listen(context.Background(), "tcp", *bindAddr)
 	if err != nil {
 		logrus.Fatalf("tls inner Listener: %v", err)
@@ -94,7 +94,8 @@ func doServer() {
 
 func handleLeftConn(leftConn net.Conn) {
 	defer leftConn.Close()
-	rightConn, err := net.Dial("tcp", *remoteAddr)
+	d := net.Dialer{Control: getControlFunc(defaultRightTCPConfig)}
+	rightConn, err := d.Dial("tcp", *remoteAddr)
 	if err != nil {
 		logrus.Errorf("tcp failed to dial, %v", err)
 		return

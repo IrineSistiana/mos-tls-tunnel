@@ -27,37 +27,37 @@ import (
 )
 
 //TCP_MAXSEG TCP_NODELAY SO_SND/RCVBUF etc..
-func setSockOpt(uintFd uintptr) {
+func (c *tcpConfig) setSockOpt(uintFd uintptr) {
 	fd := int(uintFd)
 
-	if *enableTFO {
+	if c.tfo {
 		err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_FASTOPEN_CONNECT, 1)
 		if err != nil {
 			logrus.Errorf("setsockopt TCP_FASTOPEN_CONNECT, %v", err)
 		}
 	}
 
-	if *enableTCPNoDelay {
+	if c.noDelay {
 		err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_NODELAY, 1)
 		if err != nil {
 			logrus.Errorf("setsockopt TCP_NODELAY, %v", err)
 		}
 	}
 
-	if *mss > 0 {
+	if c.mss > 0 {
 		err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_MAXSEG, *mss)
 		if err != nil {
 			logrus.Errorf("setsockopt TCP_MAXSEG, %v", err)
 		}
 	}
-	if tcp_SO_SNDBUF > 0 {
-		err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_SNDBUF, tcp_SO_SNDBUF)
+	if c.sndBuf > 0 {
+		err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_SNDBUF, c.sndBuf)
 		if err != nil {
 			logrus.Errorf("setsockopt SO_SNDBUF, %v", err)
 		}
 	}
-	if tcp_SO_RCVBUF > 0 {
-		err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_RCVBUF, tcp_SO_RCVBUF)
+	if c.rcvBuf > 0 {
+		err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_RCVBUF, c.rcvBuf)
 		if err != nil {
 			logrus.Errorf("setsockopt SO_RCVBUF, %v", err)
 		}

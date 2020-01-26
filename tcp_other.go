@@ -25,6 +25,6 @@ import (
 	"syscall"
 )
 
-func getControlFunc() func(network, address string, c syscall.RawConn) error {
+func getControlFunc(conf *tcpConfig) func(network, address string, c syscall.RawConn) error {
 	return nil
 }

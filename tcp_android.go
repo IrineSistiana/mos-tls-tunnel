@@ -28,14 +28,14 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func getControlFunc() func(network, address string, c syscall.RawConn) error {
+func getControlFunc(conf *tcpConfig) func(network, address string, c syscall.RawConn) error {
 	return func(network, address string, c syscall.RawConn) error {
 		if *vpnMode {
 			if err := c.Control(sendFdToBypass); err != nil {
 				return err
 			}
 		}
-		return c.Control(setSockOpt)
+		return c.Control(conf.setSockOpt)
 	}
 }
 

@@ -28,38 +28,32 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func getControlFunc() func(network, address string, c syscall.RawConn) error {
+func getControlFunc(conf *tcpConfig) func(network, address string, c syscall.RawConn) error {
 	return func(network, address string, c syscall.RawConn) error {
-		return c.Control(setSockOpt)
+		return c.Control(conf.setSockOpt)
 	}
 }
 
 //TCP_MAXSEG TCP_NODELAY SO_SND/RCVBUF etc..
-func setSockOpt(uintptrFd uintptr) {
+func (c *tcpConfig) setSockOpt(uintptrFd uintptr) {
 	fd := windows.Handle(uintptrFd)
 	var err error
 
-	if *enableTCPNoDelay {
+	if c.noDelay {
 		err = windows.SetsockoptInt(fd, windows.IPPROTO_TCP, windows.TCP_NODELAY, 1)
 		if err != nil {
 			logrus.Errorf("setsockopt TCP_NODELAY, %v", err)
 		}
 	}
 
-	// can't set TCP_MAXSEG on windows
-
-	// if *mss > 0 {
-	// 	windows.SetsockoptInt(fd, windows.IPPROTO_TCP, windows.TCP_MAXSEG, *mss)
-	// }
-
-	if tcp_SO_SNDBUF > 0 {
-		err := windows.SetsockoptInt(fd, windows.SOL_SOCKET, windows.SO_SNDBUF, tcp_SO_SNDBUF)
+	if c.sndBuf > 0 {
+		err := windows.SetsockoptInt(fd, windows.SOL_SOCKET, windows.SO_SNDBUF, c.sndBuf)
 		if err != nil {
 			logrus.Errorf("setsockopt SO_SNDBUF, %v", err)
 		}
 	}
-	if tcp_SO_RCVBUF > 0 {
-		err := windows.SetsockoptInt(fd, windows.SOL_SOCKET, windows.SO_RCVBUF, tcp_SO_RCVBUF)
+	if c.rcvBuf > 0 {
+		err := windows.SetsockoptInt(fd, windows.SOL_SOCKET, windows.SO_RCVBUF, c.rcvBuf)
 		if err != nil {
 			logrus.Errorf("setsockopt SO_RCVBUF, %v", err)
 		}

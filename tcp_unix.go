@@ -23,8 +23,8 @@ package main
 
 import "syscall"
 
-func getControlFunc() func(network, address string, c syscall.RawConn) error {
+func getControlFunc(conf *tcpConfig) func(network, address string, c syscall.RawConn) error {
 	return func(network, address string, c syscall.RawConn) error {
-		return c.Control(setSockOpt)
+		return c.Control(conf.setSockOpt)
 	}
 }

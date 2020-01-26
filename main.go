@@ -81,6 +81,10 @@ var (
 
 	//mux config
 	defaultSmuxConfig *smux.Config
+
+	//tcp config
+	defaultLeftTCPConfig  *tcpConfig
+	defaultRightTCPConfig *tcpConfig
 )
 
 const (
@@ -167,6 +171,44 @@ func main() {
 		MaxStreamBuffer:   512 * 1024,
 	}
 
+	localTCPConfig := &tcpConfig{
+		tfo:     false,
+		noDelay: false,
+		mss:     0,
+		sndBuf:  64 * 1024,
+		rcvBuf:  64 * 1024,
+	}
+
+	defaultTCPConfig := &tcpConfig{
+		tfo:     *enableTFO,
+		noDelay: *enableTCPNoDelay,
+		mss:     *mss,
+		sndBuf:  tcp_SO_SNDBUF,
+		rcvBuf:  tcp_SO_RCVBUF,
+	}
+
+	// bind
+	addr, err := net.ResolveTCPAddr("tcp", *bindAddr)
+	if err != nil {
+		logrus.Fatalf("bind addr invalid, %v", err)
+	}
+	if addr.IP.IsLoopback() {
+		defaultLeftTCPConfig = localTCPConfig
+	} else {
+		defaultLeftTCPConfig = defaultTCPConfig
+	}
+
+	// remote
+	addr, err = net.ResolveTCPAddr("tcp", *remoteAddr)
+	if err != nil {
+		logrus.Fatalf("remote addr invalid, %v", err)
+	}
+	if addr.IP.IsLoopback() {
+		defaultRightTCPConfig = localTCPConfig
+	} else {
+		defaultRightTCPConfig = defaultTCPConfig
+	}
+
 	buffPool = &sync.Pool{New: func() interface{} {
 		return make([]byte, ioCopyBuffSize)
 	}}
@@ -186,7 +228,7 @@ func main() {
 		net.DefaultResolver.PreferGo = true
 		net.DefaultResolver.Dial = func(ctx context.Context, network, address string) (net.Conn, error) {
 			d := net.Dialer{}
-			d.Control = getControlFunc()
+			d.Control = getControlFunc(defaultRightTCPConfig)
 			return d.DialContext(ctx, "tcp", *fallbackDNS)
 		}
 	}
