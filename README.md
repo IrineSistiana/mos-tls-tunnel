@@ -9,32 +9,34 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
         -b string
                 Bind address (default "127.0.0.1:1080")
         -buff int
-                The maximum socket buffer in KB (default 512)
+                The value of maximum socket buffer, tcp_SO_RCVBUF and tcp_SO_SNDBUF, in KB. 0 means using system default
         -cert string
-                Path to cert, used by server mode. If both key and cert is empty, a self signed certificate will be used
+                (Server only) Path to cert. If both key and cert is empty, a self signed certificate will be used
         -fallback-dns string
-                use this server instead of system default to resolve host name, must be an IP address.
+                use this server instead of system default to resolve host name in -b -r, must be an IP address.
         -fast-open
-                Enable TCP fast open, only support linux with kernel version 4.11+
+                (Linux kernel 4.11+ only) Enable TCP fast open
         -key string
-                Path to key, used by server mode. If both key and cert is empty, a self signed certificate will be used
+                (Server only) Path to key. If both key and cert is empty, a self signed certificate will be used
+        -max-stream int
+                (Client only) The max number of multiplexed streams in one ture TCP connection (default 4)
         -mss int
-                TCP_MAXSEG, the maximum segment size for outgoing TCP packets, linux only
+                (Linux only) The value of TCP_MAXSEG. 0 means using system default
         -mux
                 Enable multiplex
         -n string
-                Server name, used to verify the hostname. It is also included in the client's TLS and WSS handshake to support virtual hosting unless it is an IP address.
+                Server name. Client will use it to verify the hostname and to support virtual hosting. Server will use it to generate self signed certificate     
         -no-delay
                 Enable TCP_NODELAY
         -path string
                 WebSocket path (default "/")
         -r string
                 Remote address
-        -s    Server mode
+        -s    Indicate program to run as a server. If absent, run as a client
         -sv
-                Skip verify, client won't verify the server's certificate chain and host name. In this mode, your connections are susceptible to man-in-the-middle attacks. Use it with caution.    
+                (Client only) Skip verify, client won't verify the server's certificate chain and host name.
         -timeout duration
-                the idle timeout for connections (default 5m0s)
+                The idle timeout for connections (default 5m0s)
         -verbose
                 more log
         -wss
