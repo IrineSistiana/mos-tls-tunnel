@@ -42,9 +42,11 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
         -wss
                 Enable WebSocket Secure protocol
 
+ **Note**: These options need to be consistent across client and server: `mux`,`wss`,`path`
+
 ## WebSocket Secure
 
-mos-tls-tunnel support WebSocket Secure protocol (wss). WebSocket connections can be proxied by HTTP server such as Nginx,as well as most of CDNs that support WebSocket.
+mos-tls-tunnel support WebSocket Secure protocol (wss). WebSocket connections can be proxied by HTTP server such as Apache, as well as most of CDNs that support WebSocket.
 
 ## Multiplex (Experimental)
 
@@ -69,7 +71,7 @@ On the server, option `s` is required, for example:
         ss-server --plugin mos-tls-tunnel --plugin-opts "s;cert=/path/to/your/cert;key=/path/to/your/key"
         ...
 
-On the client:
+On the client, for example:
 
         ss-local --plugin mos-tls-tunnel
         ss-local --plugin mos-tls-tunnel --plugin-opts "wss"
