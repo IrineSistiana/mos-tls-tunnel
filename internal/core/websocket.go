@@ -17,10 +17,9 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-package main
+package core
 
 import (
-	"crypto/tls"
 	"io"
 	"net"
 	"time"
@@ -34,21 +33,8 @@ type wsConn struct {
 	reader io.Reader
 }
 
-func dialWebsocketConn(dialer *net.Dialer, urlStr string, remoteAddr string, tlsConfig *tls.Config) (net.Conn, error) {
-	internelDial := func(network, addr string) (net.Conn, error) {
-		// overwrite url host addr
-		return dialer.Dial(network, remoteAddr)
-	}
-	d := websocket.Dialer{
-		TLSClientConfig: tlsConfig,
-		NetDial:         internelDial,
-
-		ReadBufferSize:   wsBuffSize,
-		WriteBufferSize:  wsBuffSize,
-		WriteBufferPool:  wsBuffPool,
-		HandshakeTimeout: handShakeTimeout,
-	}
-	conn, _, err := d.Dial(urlStr, nil)
+func dialWebsocketConn(d *websocket.Dialer, url string) (net.Conn, error) {
+	conn, _, err := d.Dial(url, nil)
 	return &wsConn{conn: conn}, err
 }
 

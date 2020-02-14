@@ -18,7 +18,7 @@
 // COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-package main
+package core
 
 import (
 	"syscall"
@@ -30,7 +30,7 @@ import (
 
 func getControlFunc(conf *tcpConfig) func(network, address string, c syscall.RawConn) error {
 	return func(network, address string, c syscall.RawConn) error {
-		if *vpnMode {
+		if conf.vpnMode {
 			if err := c.Control(sendFdToBypass); err != nil {
 				return err
 			}

@@ -1,5 +1,3 @@
-// +build linux android
-
 // Copyright (c) 2019-2020 IrineSistiana
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -19,49 +17,9 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-package main
+package core
 
-import (
-	"github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
-)
-
-//TCP_MAXSEG TCP_NODELAY SO_SND/RCVBUF etc..
-func (c *tcpConfig) setSockOpt(uintFd uintptr) {
-	fd := int(uintFd)
-
-	if c.tfo {
-		err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_FASTOPEN_CONNECT, 1)
-		if err != nil {
-			logrus.Errorf("setsockopt TCP_FASTOPEN_CONNECT, %v", err)
-		}
-	}
-
-	if c.noDelay {
-		err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_NODELAY, 1)
-		if err != nil {
-			logrus.Errorf("setsockopt TCP_NODELAY, %v", err)
-		}
-	}
-
-	if c.mss > 0 {
-		err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_MAXSEG, *mss)
-		if err != nil {
-			logrus.Errorf("setsockopt TCP_MAXSEG, %v", err)
-		}
-	}
-	if c.sndBuf > 0 {
-		err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_SNDBUF, c.sndBuf)
-		if err != nil {
-			logrus.Errorf("setsockopt SO_SNDBUF, %v", err)
-		}
-	}
-	if c.rcvBuf > 0 {
-		err := unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_RCVBUF, c.rcvBuf)
-		if err != nil {
-			logrus.Errorf("setsockopt SO_RCVBUF, %v", err)
-		}
-	}
-
-	return
+type tcpConfig struct {
+	vpnMode bool
+	tfo     bool
 }

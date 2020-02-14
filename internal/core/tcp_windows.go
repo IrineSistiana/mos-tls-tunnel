@@ -1,4 +1,4 @@
-// +build linux,!android
+// +build windows
 
 // Copyright (c) 2019-2020 IrineSistiana
 //
@@ -19,12 +19,12 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-package main
+package core
 
-import "syscall"
+import (
+	"syscall"
+)
 
 func getControlFunc(conf *tcpConfig) func(network, address string, c syscall.RawConn) error {
-	return func(network, address string, c syscall.RawConn) error {
-		return c.Control(conf.setSockOpt)
-	}
+	return nil // nothing to do on windows @_@
 }

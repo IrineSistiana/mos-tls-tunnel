@@ -1,5 +1,3 @@
-// +build windows
-
 // Copyright (c) 2019-2020 IrineSistiana
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -19,45 +17,54 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-package main
+package core
 
 import (
-	"syscall"
-
-	"github.com/sirupsen/logrus"
-	"golang.org/x/sys/windows"
+	"io"
+	"net"
+	"sync"
+	"time"
 )
 
-func getControlFunc(conf *tcpConfig) func(network, address string, c syscall.RawConn) error {
-	return func(network, address string, c syscall.RawConn) error {
-		return c.Control(conf.setSockOpt)
-	}
+func openTunnel(dst, src net.Conn, buffPool *sync.Pool, timeout time.Duration) {
+	buf := buffPool.Get().([]byte)
+
+	copyBuffer(dst, src, buf, timeout)
+	dst.Close()
+	src.Close()
+	buffPool.Put(buf)
 }
 
-//TCP_MAXSEG TCP_NODELAY SO_SND/RCVBUF etc..
-func (c *tcpConfig) setSockOpt(uintptrFd uintptr) {
-	fd := windows.Handle(uintptrFd)
-	var err error
+func copyBuffer(dst net.Conn, src net.Conn, buf []byte, timeout time.Duration) (written int64, err error) {
 
-	if c.noDelay {
-		err = windows.SetsockoptInt(fd, windows.IPPROTO_TCP, windows.TCP_NODELAY, 1)
-		if err != nil {
-			logrus.Errorf("setsockopt TCP_NODELAY, %v", err)
-		}
+	if len(buf) <= 0 {
+		panic("buf size <= 0")
 	}
 
-	if c.sndBuf > 0 {
-		err := windows.SetsockoptInt(fd, windows.SOL_SOCKET, windows.SO_SNDBUF, c.sndBuf)
-		if err != nil {
-			logrus.Errorf("setsockopt SO_SNDBUF, %v", err)
+	for {
+		src.SetReadDeadline(time.Now().Add(timeout))
+		nr, er := src.Read(buf)
+		if nr > 0 {
+			dst.SetWriteDeadline(time.Now().Add(timeout))
+			nw, ew := dst.Write(buf[0:nr])
+			if nw > 0 {
+				written += int64(nw)
+			}
+			if ew != nil {
+				err = ew
+				break
+			}
+			if nr != nw {
+				err = io.ErrShortWrite
+				break
+			}
+		}
+		if er != nil {
+			if er != io.EOF {
+				err = er
+			}
+			break
 		}
 	}
-	if c.rcvBuf > 0 {
-		err := windows.SetsockoptInt(fd, windows.SOL_SOCKET, windows.SO_RCVBUF, c.rcvBuf)
-		if err != nil {
-			logrus.Errorf("setsockopt SO_RCVBUF, %v", err)
-		}
-	}
-
-	return
+	return written, err
 }

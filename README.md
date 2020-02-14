@@ -6,51 +6,70 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
 
 ## Usage
 
+client ---> |mtt-client| ---> |mtt-server| ---> destination
+
+`mtt-client`:
+
         -b string
-                Bind address (default "127.0.0.1:1080")
-        -buff int
-                The value of maximum socket buffer, tcp_SO_RCVBUF and tcp_SO_SNDBUF, in KB. 0 means using system default
-        -cert string
-                (Server only) Path to cert. If both key and cert is empty, a self signed certificate will be used
+                [Host:Port] Bind address, e.g. '127.0.0.1:1080'
         -fallback-dns string
-                use this server instead of system default to resolve host name in -b -r, must be an IP address.
+                [IP:Port] Use this server instead of system default to resolve host name in -b -r, must be an IP address.
         -fast-open
                 (Linux kernel 4.11+ only) Enable TCP fast open
-        -key string
-                (Server only) Path to key. If both key and cert is empty, a self signed certificate will be used
-        -max-stream int
-                (Client only) The max number of multiplexed streams in one ture TCP connection (default 4)
-        -mss int
-                (Linux only) The value of TCP_MAXSEG. 0 means using system default
         -mux
                 Enable multiplex
+        -mux-max-stream int
+                The max number of multiplexed streams in one ture TCP connection (default 4)
         -n string
-                Server name. Client will use it to verify the hostname and to support virtual hosting. Server will use it to generate self signed certificate     
-        -no-delay
-                Enable TCP_NODELAY
-        -path string
-                WebSocket path (default "/")
-        -r string
-                Remote address
-        -s    Indicate program to run as a server. If absent, run as a client
+                Server name. Use to verify the hostname and to support virtual hosting.
+        -s string
+                [Host:Port] Server address
         -sv
-                (Client only) Skip verify, client won't verify the server's certificate chain and host name.
+                Skip verify. Client won't verify the server's certificate chain and host name.
         -timeout duration
                 The idle timeout for connections (default 5m0s)
         -verbose
                 more log
         -wss
                 Enable WebSocket Secure protocol
+        -wss-path string
+                WebSocket path (default "/")
 
- **Note**: These options need to be consistent across client and server: `mux`,`wss`,`path`
+`mtt-server`:
+
+        -b string
+                [Host:Port] Bind address, e.g. '127.0.0.1:1080'
+        -cert string
+                [Path] X509KeyPair cert file
+        -fast-open
+                (Linux kernel 4.11+ only) Enable TCP fast open
+        -key string
+                [Path] X509KeyPair key file
+        -mux
+                Enable multiplex
+        -n string
+                Server name. Use to generate self signed certificate DNSName
+        -d string
+                [Host:Port] Destination address
+        -timeout duration
+                The idle timeout for connections (default 5m0s)
+        -verbose
+                more log
+        -wss
+                Enable WebSocket Secure protocol
+        -wss-path string
+                WebSocket path (default "/")
+
+
+ **Note**: These options need to be consistent across client and server: `mux`,`wss`,`wss-path`
 
 ## WebSocket Secure
 
-mos-tls-tunnel support WebSocket Secure protocol (wss). WebSocket connections can be proxied by HTTP server such as Apache, as well as most of CDNs that support WebSocket.
+mos-tls-tunnel support WebSocket Secure protocol (`wss`). WebSocket connections can be proxied by HTTP server such as Apache, as well as most of CDNs that support WebSocket.
 
 ## Multiplex (Experimental)
 
-mos-tls-tunnel support connection Multiplex (mux). It significantly reduces TCP handshake latency, at the cost of high throughput.
+mos-tls-tunnel support connection Multiplex (`mux`). It significantly reduces TCP handshake latency, at the cost of high throughput.
 
 ## Self Signed Certificate
 
@@ -60,24 +79,21 @@ On the client, if server's certificate can't be verified. Option `sv` is require
 
 ## SIP003
 
-mos-tls-tunnel support shadowsocks [SIP003](https://shadowsocks.org/en/spec/Plugin.html)
+mos-tls-tunnel support shadowsocks [SIP003](https://shadowsocks.org/en/spec/Plugin.html).Options keys are the same as [Usage](#usage) defined.
 
-Options keys are the same as [Usage](#usage) defined
+For example:
 
-On the server, option `s` is required, for example:
+**Shadowsocks over TLS**:
 
-        ss-server --plugin mos-tls-tunnel --plugin-opts "s"
-        ss-server --plugin mos-tls-tunnel --plugin-opts "s;wss"
-        ss-server --plugin mos-tls-tunnel --plugin-opts "s;cert=/path/to/your/cert;key=/path/to/your/key"
-        ...
+        ss-server -c config.json --plugin mtt-server 
+        ss-local -c config.json --plugin mtt-client --plugin-opts "sv"
 
-On the client, for example:
+**Shadowsocks over WebSocket Secure(wss)**:
 
-        ss-local --plugin mos-tls-tunnel
-        ss-local --plugin mos-tls-tunnel --plugin-opts "wss"
-        ss-local --plugin mos-tls-tunnel --plugin-opts "sv;n=www.cloudflare.com"
-        ss-local --plugin mos-tls-tunnel --plugin-opts "wss,sv;n=www.cloudflare.com,buff=32"
-        ...
+        ss-server -c config.json --plugin mtt-server --plugin-opts "wss"
+        ss-local -c config.json --plugin mtt-client --plugin-opts "wss,sv"
+
+
 
 ## Android plugin
 
