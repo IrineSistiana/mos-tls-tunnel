@@ -47,8 +47,6 @@ type Client struct {
 
 	wssURL   string
 	wsDialer *websocket.Dialer
-	dialWSS  func() (net.Conn, error)
-	dialTLS  func() (net.Conn, error)
 
 	netDialer *net.Dialer
 
@@ -56,6 +54,7 @@ type Client struct {
 	wsBuffPool     *sync.Pool
 
 	smuxSessPool smuxSessPool
+	smuxConfig   *smux.Config
 
 	listenerLocker sync.Mutex
 	listener       net.Listener
@@ -127,12 +126,6 @@ func NewClient(c *ClientConfig) (*Client, error) {
 		WriteBufferPool:  client.wsBuffPool,
 		HandshakeTimeout: defaultHandShakeTimeout,
 	}
-	client.dialWSS = func() (net.Conn, error) { return dialWebsocketConn(client.wsDialer, client.wssURL) }
-
-	//tls dial
-	client.dialTLS = func() (net.Conn, error) {
-		return tls.DialWithDialer(client.netDialer, "tcp", c.RemoteAddr, client.tlsConf)
-	}
 
 	// fallback dns
 	if len(c.FallbackDNS) != 0 {
@@ -153,12 +146,10 @@ func NewClient(c *ClientConfig) (*Client, error) {
 	//smux pool
 	client.smuxSessPool = smuxSessPool{}
 
+	client.smuxConfig = defaultSmuxConfig()
 	client.conf = c
 	return client, nil
 }
-
-var localTLSConfig *tls.Config
-var wssURL string
 
 //Start starts the client, it block
 func (client *Client) Start() error {
@@ -194,6 +185,14 @@ func (client *Client) Close() error {
 	return nil
 }
 
+func (client *Client) dialWSS() (net.Conn, error) {
+	return dialWebsocketConn(client.wsDialer, client.wssURL)
+}
+
+func (client *Client) dialTLS() (net.Conn, error) {
+	return tls.DialWithDialer(client.netDialer, "tcp", client.conf.RemoteAddr, client.tlsConf)
+}
+
 func (client *Client) newServerConn() (net.Conn, error) {
 	if client.conf.EnableWSS {
 		return client.dialWSS()
@@ -210,7 +209,7 @@ func (client *Client) dialNewSmuxSess() (*smux.Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	sess, err := smux.Client(rightConn, defaultSmuxConfig)
+	sess, err := smux.Client(rightConn, client.smuxConfig)
 	if err != nil {
 		rightConn.Close()
 		return nil, err

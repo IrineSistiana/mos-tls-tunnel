@@ -47,13 +47,14 @@ type Server struct {
 
 	upgrader websocket.Upgrader
 
-	dialDst   func() (net.Conn, error)
 	netDialer *net.Dialer
 
 	ioCopybuffPool *sync.Pool
 
 	listenerLocker sync.Mutex
 	listener       net.Listener
+
+	smuxConfig *smux.Config
 
 	log *logrus.Logger
 }
@@ -111,9 +112,6 @@ func NewServer(c *ServerConfig) (*Server, error) {
 		Control: getControlFunc(server.tcpConfig),
 		Timeout: defaultHandShakeTimeout,
 	}
-	server.dialDst = func() (net.Conn, error) {
-		return server.netDialer.Dial("tcp", c.DstAddr)
-	}
 
 	//ws upgrader
 	server.upgrader = websocket.Upgrader{
@@ -122,6 +120,7 @@ func NewServer(c *ServerConfig) (*Server, error) {
 		WriteBufferSize:  0,
 	}
 
+	server.smuxConfig = defaultSmuxConfig()
 	return server, nil
 }
 
@@ -139,8 +138,9 @@ func (server *Server) Start() error {
 	server.log.Printf("plugin listen at %s", listener.Addr())
 
 	if server.conf.EnableWSS {
-		http.Handle(server.conf.WSSPath, server)
-		err = http.Serve(listener, nil)
+		httpMux := http.NewServeMux()
+		httpMux.Handle(server.conf.WSSPath, server)
+		err = http.Serve(listener, httpMux)
 		if err != nil {
 			return fmt.Errorf("ListenAndServe: %v", err)
 		}
@@ -189,7 +189,7 @@ func (server *Server) handleClientConn(leftConn net.Conn) {
 func (server *Server) handleClientMuxConn(leftConn net.Conn) {
 	defer leftConn.Close()
 
-	sess, err := smux.Server(leftConn, defaultSmuxConfig)
+	sess, err := smux.Server(leftConn, server.smuxConfig)
 	if err != nil {
 		server.log.Errorf("smux Server, %v", err)
 		return
@@ -221,6 +221,10 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		server.handleClientConn(leftConn)
 	}
+}
+
+func (server *Server) dialDst() (net.Conn, error) {
+	return server.netDialer.Dial("tcp", server.conf.DstAddr)
 }
 
 func (server *Server) generateCertificate() ([]tls.Certificate, error) {

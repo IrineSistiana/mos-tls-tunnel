@@ -25,22 +25,22 @@ import (
 	"github.com/xtaci/smux"
 )
 
-var (
-	defaultSmuxConfig = &smux.Config{
-		Version:           1,
-		KeepAliveInterval: 10 * time.Second,
-		KeepAliveTimeout:  30 * time.Second,
-		MaxFrameSize:      16 * 1024,
-		MaxReceiveBuffer:  256 * 1024,
-		MaxStreamBuffer:   64 * 1024,
-	}
-)
-
 const (
 	defaultWSIOBufferSize   = 32 * 1024
 	defaultCopyIOBufferSize = 16 * 1024
 	defaultHandShakeTimeout = time.Second * 10
 )
+
+func defaultSmuxConfig() *smux.Config {
+	return &smux.Config{
+		Version:           1,
+		KeepAliveInterval: 30 * time.Second,
+		KeepAliveTimeout:  70 * time.Second,
+		MaxFrameSize:      16 * 1024,
+		MaxReceiveBuffer:  256 * 1024,
+		MaxStreamBuffer:   64 * 1024,
+	}
+}
 
 //ClientConfig is a config
 type ClientConfig struct {
