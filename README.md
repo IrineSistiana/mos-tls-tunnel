@@ -4,6 +4,10 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
 
 ---
 
+## Android plugin
+
+The Android plugin project is maintained here: [mostunnel-android](https://github.com/IrineSistiana/mostunnel-android). This is a plugin of [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android)
+
 ## Usage
 
 client ---> |mtt-client| ---> |mtt-server| ---> destination
@@ -105,10 +109,6 @@ For example:
 * [shadowsocks-libev](https://github.com/shadowsocks/shadowsocks-libev)
 * [shadowsocks-windows](https://github.com/shadowsocks/shadowsocks-windows) **Note**: Not support `Need Plugin Argument` yet.
 * [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android)
-
-## Android plugin
-
-The Android plugin project is maintained here: [mostunnel-android](https://github.com/IrineSistiana/mostunnel-android). This is a plugin of [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android)
 
 ## Open Source Components / Libraries
 
