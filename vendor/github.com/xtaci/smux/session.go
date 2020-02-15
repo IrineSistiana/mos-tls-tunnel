@@ -16,12 +16,11 @@ const (
 )
 
 var (
-	ErrInvalidProtocol  = errors.New("invalid protocol")
-	ErrConsumed         = errors.New("peer consumed more than sent")
-	ErrGoAway           = errors.New("stream id overflows, should start a new connection")
-	ErrTimeout          = errors.New("timeout")
-	ErrInvalidOperation = errors.New("invalid parameters on poll")
-	ErrWouldBlock       = errors.New("operation would block on IO")
+	ErrInvalidProtocol = errors.New("invalid protocol")
+	ErrConsumed        = errors.New("peer consumed more than sent")
+	ErrGoAway          = errors.New("stream id overflows, should start a new connection")
+	ErrTimeout         = errors.New("timeout")
+	ErrWouldBlock      = errors.New("operation would block on IO")
 )
 
 type writeRequest struct {
@@ -79,12 +78,6 @@ type Session struct {
 
 	shaper chan writeRequest // a shaper for writing
 	writes chan writeRequest
-
-	// Edge-Triggered PollIn support
-	// Streams which become 'readable', will return from PollWait()
-	pollEvents        map[uint32]*Stream
-	pollEventsLock    sync.Mutex
-	chPollEventNotify chan struct{} // notify new events
 }
 
 func newSession(config *Config, conn io.ReadWriteCloser, client bool) *Session {
@@ -101,8 +94,6 @@ func newSession(config *Config, conn io.ReadWriteCloser, client bool) *Session {
 	s.chSocketReadError = make(chan struct{})
 	s.chSocketWriteError = make(chan struct{})
 	s.chProtoError = make(chan struct{})
-	s.chPollEventNotify = make(chan struct{}, 1)
-	s.pollEvents = make(map[uint32]*Stream)
 
 	if client {
 		s.nextStreamID = 1
@@ -141,13 +132,15 @@ func (s *Session) OpenStream() (*Stream, error) {
 
 	stream := newStream(sid, s.config.MaxFrameSize, s)
 
-	if _, err := s.writeFrame(newFrame(cmdSYN, sid)); err != nil {
+	if _, err := s.writeFrame(newFrame(byte(s.config.Version), cmdSYN, sid)); err != nil {
 		return nil, err
 	}
 
 	s.streamLock.Lock()
 	defer s.streamLock.Unlock()
 	select {
+	case <-s.chSocketReadError:
+		return nil, s.socketReadError.Load().(error)
 	case <-s.chSocketWriteError:
 		return nil, s.socketWriteError.Load().(error)
 	case <-s.die:
@@ -209,45 +202,6 @@ func (s *Session) Close() error {
 		return s.conn.Close()
 	} else {
 		return io.ErrClosedPipe
-	}
-}
-
-// PollWait returns streams which became readable
-func (s *Session) PollWait(events []*Stream) (int, error) {
-	if len(events) == 0 {
-		return -1, ErrInvalidOperation
-	}
-
-	for {
-		select {
-		case <-s.chPollEventNotify:
-			s.pollEventsLock.Lock()
-			i := 0
-			for id, stream := range s.pollEvents {
-				if i >= len(events) {
-					break
-				}
-				events[i] = stream
-				i++
-				delete(s.pollEvents, id)
-			}
-			s.pollEventsLock.Unlock()
-			return i, nil
-		case <-s.die:
-			return -1, io.ErrClosedPipe
-		}
-	}
-}
-
-// streams notify session pollin events
-func (s *Session) notifyPoll(stream *Stream) {
-	s.pollEventsLock.Lock()
-	s.pollEvents[stream.id] = stream
-	s.pollEventsLock.Unlock()
-
-	select {
-	case s.chPollEventNotify <- struct{}{}:
-	default:
 	}
 }
 
@@ -363,7 +317,7 @@ func (s *Session) recvLoop() {
 		// read header first
 		if _, err := io.ReadFull(s.conn, hdr[:]); err == nil {
 			atomic.StoreInt32(&s.dataReady, 1)
-			if hdr.Version() != version {
+			if hdr.Version() != byte(s.config.Version) {
 				s.notifyProtoError(ErrInvalidProtocol)
 				return
 			}
@@ -434,7 +388,7 @@ func (s *Session) keepalive() {
 	for {
 		select {
 		case <-tickerPing.C:
-			s.writeFrameInternal(newFrame(cmdNOP, 0), tickerPing.C, 0)
+			s.writeFrameInternal(newFrame(byte(s.config.Version), cmdNOP, 0), tickerPing.C, 0)
 			s.notifyBucket() // force a signal to the recvLoop
 		case <-tickerTimeout.C:
 			if !atomic.CompareAndSwapInt32(&s.dataReady, 1, 0) {

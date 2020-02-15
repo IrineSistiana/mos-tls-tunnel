@@ -68,7 +68,7 @@ func (s *Stream) ID() uint32 {
 // Read implements net.Conn
 func (s *Stream) Read(b []byte) (n int, err error) {
 	for {
-		n, err = s.TryRead(b)
+		n, err = s.tryRead(b)
 		if err == ErrWouldBlock {
 			if ew := s.waitRead(); ew != nil {
 				return 0, ew
@@ -79,8 +79,44 @@ func (s *Stream) Read(b []byte) (n int, err error) {
 	}
 }
 
-// TryRead is the nonblocking version of Read
-func (s *Stream) TryRead(b []byte) (n int, err error) {
+// tryRead is the nonblocking version of Read
+func (s *Stream) tryRead(b []byte) (n int, err error) {
+	if s.sess.config.Version == 2 {
+		return s.tryReadv2(b)
+	}
+
+	if len(b) == 0 {
+		return 0, nil
+	}
+
+	s.bufferLock.Lock()
+	if len(s.buffers) > 0 {
+		n = copy(b, s.buffers[0])
+		s.buffers[0] = s.buffers[0][n:]
+		if len(s.buffers[0]) == 0 {
+			s.buffers[0] = nil
+			s.buffers = s.buffers[1:]
+			// full recycle
+			defaultAllocator.Put(s.heads[0])
+			s.heads = s.heads[1:]
+		}
+	}
+	s.bufferLock.Unlock()
+
+	if n > 0 {
+		s.sess.returnTokens(n)
+		return n, nil
+	}
+
+	select {
+	case <-s.die:
+		return 0, io.EOF
+	default:
+		return 0, ErrWouldBlock
+	}
+}
+
+func (s *Stream) tryReadv2(b []byte) (n int, err error) {
 	if len(b) == 0 {
 		return 0, nil
 	}
@@ -133,6 +169,38 @@ func (s *Stream) TryRead(b []byte) (n int, err error) {
 
 // WriteTo implements io.WriteTo
 func (s *Stream) WriteTo(w io.Writer) (n int64, err error) {
+	if s.sess.config.Version == 2 {
+		return s.writeTov2(w)
+	}
+
+	for {
+		var buf []byte
+		s.bufferLock.Lock()
+		if len(s.buffers) > 0 {
+			buf = s.buffers[0]
+			s.buffers = s.buffers[1:]
+			s.heads = s.heads[1:]
+		}
+		s.bufferLock.Unlock()
+
+		if buf != nil {
+			nw, ew := w.Write(buf)
+			s.sess.returnTokens(len(buf))
+			defaultAllocator.Put(buf)
+			if nw > 0 {
+				n += int64(nw)
+			}
+
+			if ew != nil {
+				return n, ew
+			}
+		} else if ew := s.waitRead(); ew != nil {
+			return n, ew
+		}
+	}
+}
+
+func (s *Stream) writeTov2(w io.Writer) (n int64, err error) {
 	for {
 		var notifyConsumed uint32
 		var buf []byte
@@ -182,7 +250,7 @@ func (s *Stream) sendWindowUpdate(consumed uint32) error {
 		deadline = timer.C
 	}
 
-	frame := newFrame(cmdUPD, s.id)
+	frame := newFrame(byte(s.sess.config.Version), cmdUPD, s.id)
 	var hdr updHeader
 	binary.LittleEndian.PutUint32(hdr[:], consumed)
 	binary.LittleEndian.PutUint32(hdr[4:], uint32(s.sess.config.MaxStreamBuffer))
@@ -222,6 +290,47 @@ func (s *Stream) waitRead() error {
 // Note that the behavior when multiple goroutines write concurrently is not deterministic,
 // frames may interleave in random way.
 func (s *Stream) Write(b []byte) (n int, err error) {
+	if s.sess.config.Version == 2 {
+		return s.writeV2(b)
+	}
+
+	var deadline <-chan time.Time
+	if d, ok := s.writeDeadline.Load().(time.Time); ok && !d.IsZero() {
+		timer := time.NewTimer(time.Until(d))
+		defer timer.Stop()
+		deadline = timer.C
+	}
+
+	// check if stream has closed
+	select {
+	case <-s.die:
+		return 0, io.ErrClosedPipe
+	default:
+	}
+
+	// frame split and transmit
+	sent := 0
+	frame := newFrame(byte(s.sess.config.Version), cmdPSH, s.id)
+	bts := b
+	for len(bts) > 0 {
+		sz := len(bts)
+		if sz > s.frameSize {
+			sz = s.frameSize
+		}
+		frame.data = bts[:sz]
+		bts = bts[sz:]
+		n, err := s.sess.writeFrameInternal(frame, deadline, uint64(s.numWritten))
+		s.numWritten++
+		sent += n
+		if err != nil {
+			return sent, err
+		}
+	}
+
+	return sent, nil
+}
+
+func (s *Stream) writeV2(b []byte) (n int, err error) {
 	// check empty input
 	if len(b) == 0 {
 		return 0, nil
@@ -244,7 +353,7 @@ func (s *Stream) Write(b []byte) (n int, err error) {
 
 	// frame split and transmit process
 	sent := 0
-	frame := newFrame(cmdPSH, s.id)
+	frame := newFrame(byte(s.sess.config.Version), cmdPSH, s.id)
 
 	for {
 		// per stream sliding window control
@@ -319,7 +428,7 @@ func (s *Stream) Close() error {
 	})
 
 	if once {
-		_, err = s.sess.writeFrame(newFrame(cmdFIN, s.id))
+		_, err = s.sess.writeFrame(newFrame(byte(s.sess.config.Version), cmdFIN, s.id))
 		s.sess.streamClosed(s.id)
 		return err
 	} else {
@@ -338,6 +447,7 @@ func (s *Stream) GetDieCh() <-chan struct{} {
 // A zero time value disables the deadline.
 func (s *Stream) SetReadDeadline(t time.Time) error {
 	s.readDeadline.Store(t)
+	s.notifyReadEvent()
 	return nil
 }
 
@@ -390,10 +500,6 @@ func (s *Stream) pushBytes(buf []byte) (written int, err error) {
 	s.bufferLock.Lock()
 	s.buffers = append(s.buffers, buf)
 	s.heads = append(s.heads, buf)
-	// Edge-Trigger
-	if len(s.buffers) == 1 {
-		s.sess.notifyPoll(s)
-	}
 	s.bufferLock.Unlock()
 	return
 }

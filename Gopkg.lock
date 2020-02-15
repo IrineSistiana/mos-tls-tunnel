@@ -26,23 +26,20 @@
   version = "v1.4.2"
 
 [[projects]]
-  digest = "1:170e99cd7c91ce7bb7c34ea2d1b8a185c5bbfe9fc780eb056a0926e5db367d0a"
+  digest = "1:8e1fdec0809f565c9e78875d747455b88e12b650683bf313c4d772c6022679ce"
   name = "github.com/xtaci/smux"
   packages = ["."]
   pruneopts = "UT"
-  revision = "c803f50c43b8e683e3ff99ee5009b11775c8e863"
-  version = "v2.1.0"
+  revision = "d2d7690bcce62fc6978666a2559c0d8bd3bf0036"
+  version = "v1.5.11"
 
 [[projects]]
   branch = "master"
-  digest = "1:6b58066101dc93c55b168b0c9f09b15ae700e6199709dfadddfc091413c6497f"
+  digest = "1:21170ea1a15ba3b4e49dd934e130f4e21edf3c117e24f07502fe46e45ff3a8fc"
   name = "golang.org/x/sys"
-  packages = [
-    "unix",
-    "windows",
-  ]
+  packages = ["unix"]
   pruneopts = "UT"
-  revision = "9fbb57f87de9ccfe3a99d4e3270ce8a926ebba4f"
+  revision = "12a6c2dcc1e4cb348b57847c73987099e261714b"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -52,7 +49,6 @@
     "github.com/sirupsen/logrus",
     "github.com/xtaci/smux",
     "golang.org/x/sys/unix",
-    "golang.org/x/sys/windows",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
