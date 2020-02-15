@@ -27,11 +27,12 @@ import (
 
 var (
 	defaultSmuxConfig = &smux.Config{
+		Version:           1,
 		KeepAliveInterval: 10 * time.Second,
 		KeepAliveTimeout:  30 * time.Second,
 		MaxFrameSize:      16 * 1024,
-		MaxReceiveBuffer:  2048 * 1024,
-		MaxStreamBuffer:   512 * 1024,
+		MaxReceiveBuffer:  256 * 1024,
+		MaxStreamBuffer:   64 * 1024,
 	}
 )
 
