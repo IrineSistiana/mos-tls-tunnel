@@ -126,12 +126,11 @@ func NewServer(c *ServerConfig) (*Server, error) {
 
 func (server *Server) Start() error {
 	listenConfig := net.ListenConfig{Control: getControlFunc(server.tcpConfig)}
-	innerListener, err := listenConfig.Listen(context.Background(), "tcp", server.conf.BindAddr)
+	listener, err := listenConfig.Listen(context.Background(), "tcp", server.conf.BindAddr)
 	if err != nil {
 		return fmt.Errorf("tls inner Listener: %v", err)
 	}
 
-	listener := tls.NewListener(innerListener, server.tlsConf)
 	server.listenerLocker.Lock()
 	server.listener = listener
 	server.listenerLocker.Unlock()
@@ -146,17 +145,28 @@ func (server *Server) Start() error {
 		}
 	} else {
 		for {
-			leftConn, err := listener.Accept()
+			leftRawConn, err := listener.Accept()
 			if err != nil {
 				return fmt.Errorf("listener.Accept: %v", err)
 			}
-			server.log.Debugf("leftConn from %s accepted", leftConn.RemoteAddr())
 
-			if server.conf.EnableMux {
-				server.handleClientMuxConn(leftConn)
-			} else {
-				server.handleClientConn(leftConn)
-			}
+			go func() {
+				server.log.Debugf("leftConn from %s accepted", leftRawConn.RemoteAddr())
+
+				leftConn := tls.Server(leftRawConn, server.tlsConf)
+				defer leftConn.Close()
+				if err := leftConn.Handshake(); err != nil {
+					server.log.Errorf("leftConn tls handshake: %v", err)
+					return
+				}
+
+				if server.conf.EnableMux {
+					server.handleClientMuxConn(leftConn)
+				} else {
+					server.handleClientConn(leftConn)
+				}
+			}()
+
 		}
 	}
 	return nil

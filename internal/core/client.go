@@ -190,7 +190,15 @@ func (client *Client) dialWSS() (net.Conn, error) {
 }
 
 func (client *Client) dialTLS() (net.Conn, error) {
-	return tls.DialWithDialer(client.netDialer, "tcp", client.conf.RemoteAddr, client.tlsConf)
+	conn, err := tls.DialWithDialer(client.netDialer, "tcp", client.conf.RemoteAddr, client.tlsConf)
+	if err != nil {
+		return nil, err
+	}
+	if err := conn.Handshake(); err != nil {
+		conn.Close()
+		return nil, err
+	}
+	return conn, nil
 }
 
 func (client *Client) newServerConn() (net.Conn, error) {
