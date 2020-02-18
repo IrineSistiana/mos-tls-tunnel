@@ -103,7 +103,11 @@ func NewClient(c *ClientConfig) (*Client, error) {
 
 	//config
 	client.tcpConfig = &tcpConfig{tfo: c.EnableTFO, vpnMode: c.VpnMode}
-	client.tlsConf = &tls.Config{InsecureSkipVerify: c.InsecureSkipVerify, ServerName: c.ServerName}
+	client.tlsConf = &tls.Config{
+		InsecureSkipVerify: c.InsecureSkipVerify,
+		ServerName:         c.ServerName,
+		ClientSessionCache: tls.NewLRUClientSessionCache(16),
+	}
 
 	//net dialer
 	client.netDialer = &net.Dialer{
