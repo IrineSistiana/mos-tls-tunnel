@@ -139,7 +139,7 @@ func (server *Server) Start() error {
 	if server.conf.EnableWSS {
 		httpMux := http.NewServeMux()
 		httpMux.Handle(server.conf.WSSPath, server)
-		err = http.Serve(listener, httpMux)
+		err = http.Serve(tls.NewListener(listener, server.tlsConf), httpMux)
 		if err != nil {
 			return fmt.Errorf("ListenAndServe: %v", err)
 		}
