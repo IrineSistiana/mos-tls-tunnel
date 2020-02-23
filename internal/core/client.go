@@ -103,6 +103,11 @@ func NewClient(c *ClientConfig) (*Client, error) {
 
 	//config
 	client.tcpConfig = &tcpConfig{tfo: c.EnableTFO, vpnMode: c.VpnMode}
+	if host, _, err := net.SplitHostPort(c.ServerName); err == nil {
+		c.ServerName = host
+	} else {
+		client.log.Error("Cannot get the host address from the server address")
+	}
 	client.tlsConf = &tls.Config{
 		InsecureSkipVerify: c.InsecureSkipVerify,
 		ServerName:         c.ServerName,
