@@ -78,8 +78,12 @@ func NewClient(c *ClientConfig) (*Client, error) {
 		return nil, errors.New("timeout value must at least 1 sec")
 	}
 
-	if len(c.ServerName) == 0 { //set serverName as remoteAddr
-		c.ServerName = c.RemoteAddr
+	if len(c.ServerName) == 0 { //set ServerName from RemoteAddr
+		host, _, err := net.SplitHostPort(c.RemoteAddr)
+		if err != nil {
+			return nil, errors.New("cannot get the host address from the remote server address")
+		}
+		c.ServerName = host
 	}
 
 	//init
@@ -103,11 +107,6 @@ func NewClient(c *ClientConfig) (*Client, error) {
 
 	//config
 	client.tcpConfig = &tcpConfig{tfo: c.EnableTFO, vpnMode: c.VpnMode}
-	if host, _, err := net.SplitHostPort(c.ServerName); err == nil {
-		c.ServerName = host
-	} else {
-		client.log.Error("Cannot get the host address from the server address")
-	}
 	client.tlsConf = &tls.Config{
 		InsecureSkipVerify: c.InsecureSkipVerify,
 		ServerName:         c.ServerName,
