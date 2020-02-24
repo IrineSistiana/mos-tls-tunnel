@@ -21,10 +21,12 @@ package core
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -32,6 +34,9 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"time"
+
+	mathRand "math/rand"
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -238,22 +243,49 @@ func (server *Server) dialDst() (net.Conn, error) {
 }
 
 func (server *Server) generateCertificate() ([]tls.Certificate, error) {
-	key, err := rsa.GenerateKey(rand.Reader, 1024)
+	//priv key
+	key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
 		return nil, err
 	}
-	template := x509.Certificate{SerialNumber: big.NewInt(1)}
+
+	//serial number
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		return nil, fmt.Errorf("generate serial number: %v", err)
+	}
 
 	// set DNSNames
+	var serverName string
 	if len(server.conf.ServerName) != 0 {
-		template.DNSNames = []string{server.conf.ServerName}
+		serverName = server.conf.ServerName
+	} else {
+		serverName = randServerName()
+	}
+
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject:      pkix.Name{CommonName: serverName},
+		DNSNames:     []string{serverName},
+
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().AddDate(10, 0, 0),
+
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
 	}
 
 	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
 	if err != nil {
 		return nil, err
 	}
-	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+	b, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		return nil, err
+	}
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: b})
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
 
 	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
@@ -261,4 +293,18 @@ func (server *Server) generateCertificate() ([]tls.Certificate, error) {
 		return nil, err
 	}
 	return []tls.Certificate{tlsCert}, nil
+}
+
+func randServerName() string {
+	return fmt.Sprintf("%s.%s", randStr(mathRand.Intn(5)+3), randStr(mathRand.Intn(3)+1))
+}
+
+func randStr(length int) string {
+	r := mathRand.New(mathRand.NewSource(time.Now().UnixNano()))
+	set := "abcdefghijklmnopqrstuvwxyz"
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = set[r.Intn(len(set))]
+	}
+	return string(b)
 }
