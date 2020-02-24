@@ -84,9 +84,11 @@ mos-tls-tunnel support connection Multiplex (`mux`). It significantly reduces ha
 
 ## Self Signed Certificate
 
-On the server, if both `key` and `cert` is empty, a self signed certificate will be used. And the string from `n` will be certificate's `DNSName`. 
+On the server, if both `key` and `cert` is empty, a self signed certificate will be used. And the string from `n` will be certificate's hostname. **This self signed certificate CANNOT be verified.**
 
-On the client, if server's certificate can't be verified. Option `sv` is required. Use it with caution.
+On the client, if server's certificate can't be verified. You can enable `sv` to skip the verification. **Enable this option only if you know what you are doing. Use it with caution.**
+
+We recommend that you use a valid certificate all the time. A free and valid certificate can be easily obtained here. [Let's Encrypt](https://letsencrypt.org/)
 
 ## SIP003
 
@@ -96,18 +98,18 @@ For example:
 
 **Shadowsocks over TLS**:
 
-        ss-server -c config.json --plugin mtt-server 
-        ss-local -c config.json --plugin mtt-client --plugin-opts "sv"
+        ss-server -c config.json --plugin mtt-server --plugin-opts "key=/path/to/your/key;cert=/path/to/your/cert"
+        ss-local -c config.json --plugin mtt-client
 
 **Shadowsocks over WebSocket Secure(wss)**:
 
-        ss-server -c config.json --plugin mtt-server --plugin-opts "wss"
-        ss-local -c config.json --plugin mtt-client --plugin-opts "wss,sv"
+        ss-server -c config.json --plugin mtt-server --plugin-opts "wss,key=/path/to/your/key;cert=/path/to/your/cert"
+        ss-local -c config.json --plugin mtt-client --plugin-opts "wss"
 
-**Tested Shadowsocks server and client**:
+**Recommended Shadowsocks server and client**:
 
 * [shadowsocks-libev](https://github.com/shadowsocks/shadowsocks-libev)
-* [shadowsocks-windows](https://github.com/shadowsocks/shadowsocks-windows) **Note**: Not support `Need Plugin Argument` yet.
+* [shadowsocks-windows](https://github.com/shadowsocks/shadowsocks-windows)
 * [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android)
 
 ## Open Source Components / Libraries
