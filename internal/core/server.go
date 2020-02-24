@@ -156,7 +156,7 @@ func (server *Server) Start() error {
 				leftConn := tls.Server(leftRawConn, server.tlsConf)
 				defer leftConn.Close()
 				if err := leftConn.Handshake(); err != nil {
-					server.log.Errorf("leftConn tls handshake: %v", err)
+					server.log.Errorf("leftConn %s tls handshake: %v", leftRawConn.RemoteAddr(), err)
 					return
 				}
 
@@ -211,7 +211,7 @@ func (server *Server) handleClientMuxConn(leftConn net.Conn) {
 		}
 		stream, err := sess.AcceptStream()
 		if err != nil {
-			server.log.Errorf("smux sess accept stream, %v", err)
+			server.log.Errorf("accept stream from %s, %v", sess.RemoteAddr(), err)
 			return
 		}
 		go server.handleClientConn(stream)
@@ -222,7 +222,7 @@ func (server *Server) handleClientMuxConn(leftConn net.Conn) {
 func (server *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	leftWSConn, err := server.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		server.log.Errorf("upgrade http request, %v", err)
+		server.log.Errorf("upgrade http request from %s, %v", r.RemoteAddr, err)
 		return
 	}
 	leftConn := &wsConn{conn: leftWSConn}
