@@ -99,12 +99,12 @@ For example:
 **Shadowsocks over TLS**:
 
         ss-server -c config.json --plugin mtt-server --plugin-opts "key=/path/to/your/key;cert=/path/to/your/cert"
-        ss-local -c config.json --plugin mtt-client
+        ss-local -c config.json --plugin mtt-client --plugin-opts "n=your.server.hostname"
 
 **Shadowsocks over WebSocket Secure(wss)**:
 
         ss-server -c config.json --plugin mtt-server --plugin-opts "wss,key=/path/to/your/key;cert=/path/to/your/cert"
-        ss-local -c config.json --plugin mtt-client --plugin-opts "wss"
+        ss-local -c config.json --plugin mtt-client --plugin-opts "wss;n=your.server.hostname"
 
 **Recommended Shadowsocks server and client**:
 
