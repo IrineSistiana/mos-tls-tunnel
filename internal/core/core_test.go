@@ -22,15 +22,19 @@ package core
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"net"
 	"sync"
 	"testing"
 	"time"
 )
 
+const (
+	dataSize = 1024
+)
+
 var (
-	dataSize = 1024 * 128
-	data     = make([]byte, dataSize)
+	data = make([]byte, dataSize)
 
 	clientBindAddr   = "127.0.0.1:50000"
 	serverBindAddr   = "127.0.0.1:50001"
@@ -46,7 +50,52 @@ var (
 	}
 )
 
+type echoServer struct {
+	buf [dataSize]byte
+	l   net.Listener
+}
+
+func newEchoServer(addr string) (*echoServer, error) {
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	e := &echoServer{
+		l: l,
+	}
+
+	go func() {
+		for {
+			conn, err := l.Accept()
+			if err != nil {
+				log.Print(err)
+				return
+			}
+			i, err := conn.Read(e.buf[:])
+			if err != nil {
+				log.Print(err)
+			}
+			_, err = conn.Write(e.buf[:i])
+			if err != nil {
+				log.Print(err)
+			}
+		}
+	}()
+
+	return e, nil
+}
+
+func (e *echoServer) close() error {
+	return e.l.Close()
+}
+
 func test(sc *ServerConfig, cc *ClientConfig, t *testing.T) {
+	echo, err := newEchoServer(dstAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer echo.close()
+
 	wg := sync.WaitGroup{}
 
 	client, err := NewClient(clientTestConfig)
@@ -72,42 +121,27 @@ func test(sc *ServerConfig, cc *ClientConfig, t *testing.T) {
 	defer server.Close()
 
 	time.Sleep(500 * time.Millisecond)
-	l, err := net.Listen("tcp", dstAddr)
+
+	localConn, err := net.Dial("tcp", clientBindAddr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer l.Close()
-
-	go func() {
-		localConn, err := net.Dial("tcp", clientBindAddr)
-		if err != nil {
-			t.Fatal(err)
-		}
-		localConn.SetWriteDeadline(time.Now().Add(time.Second))
-		if _, err := localConn.Write(data); err != nil {
-			t.Fatal(err)
-		}
-		localConn.Close()
-	}()
-
-	dstConn, err := l.Accept()
-	if err != nil {
+	defer localConn.Close()
+	localConn.SetWriteDeadline(time.Now().Add(time.Second))
+	if _, err := localConn.Write(data); err != nil {
 		t.Fatal(err)
 	}
-	dstConn.SetWriteDeadline(time.Now().Add(time.Second))
+
 	buf := make([]byte, dataSize)
-	i := 0
-	for i < dataSize {
-		n, err := dstConn.Read(buf[i:])
-		i = i + n
-		if err != nil {
-			break
-		}
+	_, err = localConn.Read(buf)
+	if err != nil {
+		t.Fatal(err)
 	}
 	if !bytes.Equal(buf, data) {
 		t.Fatal("data err")
 	}
 
+	// force to close so wg can be released
 	client.Close()
 	server.Close()
 	wg.Wait()
