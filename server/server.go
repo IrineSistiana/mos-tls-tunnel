@@ -79,7 +79,7 @@ func main() {
 
 	server, err := core.NewServer(c)
 	if err != nil {
-		logrus.Fatalf("init client failed, %v", err)
+		logrus.Fatalf("init server failed, %v", err)
 	}
 	go func() {
 		if err := server.Start(); err != nil {
