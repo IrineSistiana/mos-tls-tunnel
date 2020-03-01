@@ -76,6 +76,8 @@ func test(sc *ServerConfig, cc *ClientConfig, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer l.Close()
+
 	go func() {
 		localConn, err := net.Dial("tcp", clientBindAddr)
 		if err != nil {
@@ -86,10 +88,6 @@ func test(sc *ServerConfig, cc *ClientConfig, t *testing.T) {
 			t.Fatal(err)
 		}
 		localConn.Close()
-	}()
-	go func() {
-		time.Sleep(time.Second * 2)
-		l.Close()
 	}()
 
 	dstConn, err := l.Accept()
