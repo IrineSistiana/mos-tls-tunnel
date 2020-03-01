@@ -91,7 +91,7 @@ func NewServer(c *ServerConfig) (*Server, error) {
 	server.tcpConfig = &tcpConfig{tfo: c.EnableTFO}
 	server.tlsConf = new(tls.Config)
 	if len(c.Cert) == 0 && len(c.Key) == 0 { //self signed cert
-		cers, err := server.generateCertificate()
+		cers, err := generateCertificate(server.conf.ServerName)
 		if err != nil {
 			return nil, fmt.Errorf("generate certificate: %v", err)
 		}
@@ -235,7 +235,7 @@ func (server *Server) dialDst() (net.Conn, error) {
 	return server.netDialer.Dial("tcp", server.conf.DstAddr)
 }
 
-func (server *Server) generateCertificate() ([]tls.Certificate, error) {
+func generateCertificate(serverName string) ([]tls.Certificate, error) {
 	//priv key
 	key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
@@ -250,10 +250,7 @@ func (server *Server) generateCertificate() ([]tls.Certificate, error) {
 	}
 
 	// set DNSNames
-	var serverName string
-	if len(server.conf.ServerName) != 0 {
-		serverName = server.conf.ServerName
-	} else {
+	if len(serverName) == 0 {
 		serverName = randServerName()
 	}
 
