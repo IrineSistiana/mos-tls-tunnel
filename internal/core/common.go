@@ -26,13 +26,16 @@ import (
 	"time"
 )
 
-func openTunnel(dst, src net.Conn, buffPool *sync.Pool, timeout time.Duration) {
-	buf := buffPool.Get().([]byte)
+var ioCopybuffPool = &sync.Pool{New: func() interface{} {
+	return make([]byte, defaultCopyIOBufferSize)
+}}
 
+func openTunnel(dst, src net.Conn, timeout time.Duration) {
+	buf := ioCopybuffPool.Get().([]byte)
 	copyBuffer(dst, src, buf, timeout)
 	dst.Close()
 	src.Close()
-	buffPool.Put(buf)
+	ioCopybuffPool.Put(buf)
 }
 
 func copyBuffer(dst net.Conn, src net.Conn, buf []byte, timeout time.Duration) (written int64, err error) {

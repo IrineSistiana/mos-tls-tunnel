@@ -54,8 +54,6 @@ type Server struct {
 
 	netDialer *net.Dialer
 
-	ioCopybuffPool *sync.Pool
-
 	listenerLocker sync.Mutex
 	listener       net.Listener
 
@@ -88,11 +86,6 @@ func NewServer(c *ServerConfig) (*Server, error) {
 	}
 
 	server.conf = c
-
-	//buffer pool
-	server.ioCopybuffPool = &sync.Pool{New: func() interface{} {
-		return make([]byte, defaultCopyIOBufferSize)
-	}}
 
 	//config
 	server.tcpConfig = &tcpConfig{tfo: c.EnableTFO}
@@ -197,8 +190,8 @@ func (server *Server) handleClientConn(leftConn net.Conn) {
 	}
 	defer rightConn.Close()
 
-	go openTunnel(leftConn, rightConn, server.ioCopybuffPool, server.conf.Timeout)
-	openTunnel(rightConn, leftConn, server.ioCopybuffPool, server.conf.Timeout)
+	go openTunnel(leftConn, rightConn, server.conf.Timeout)
+	openTunnel(rightConn, leftConn, server.conf.Timeout)
 }
 
 func (server *Server) handleClientMuxConn(leftConn net.Conn) {

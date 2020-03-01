@@ -50,9 +50,6 @@ type Client struct {
 
 	netDialer *net.Dialer
 
-	ioCopybuffPool *sync.Pool
-	wsBuffPool     *sync.Pool
-
 	smuxSessPool smuxSessPool
 	smuxConfig   *smux.Config
 
@@ -96,15 +93,6 @@ func NewClient(c *ClientConfig) (*Client, error) {
 		client.log.SetLevel(logrus.ErrorLevel)
 	}
 
-	//buffer pool
-	client.ioCopybuffPool = &sync.Pool{New: func() interface{} {
-		return make([]byte, defaultCopyIOBufferSize)
-	}}
-
-	client.wsBuffPool = &sync.Pool{New: func() interface{} {
-		return nil
-	}}
-
 	//config
 	client.tcpConfig = &tcpConfig{tfo: c.EnableTFO, vpnMode: c.VpnMode}
 	client.tlsConf = &tls.Config{
@@ -131,7 +119,7 @@ func NewClient(c *ClientConfig) (*Client, error) {
 
 		ReadBufferSize:   defaultWSIOBufferSize,
 		WriteBufferSize:  defaultWSIOBufferSize,
-		WriteBufferPool:  client.wsBuffPool,
+		WriteBufferPool:  &sync.Pool{},
 		HandshakeTimeout: defaultHandShakeTimeout,
 	}
 
@@ -320,6 +308,6 @@ func (client *Client) forwardToServer(leftConn net.Conn) {
 	}
 	client.log.Debugf("rightConn from %s to %s established", leftConn.RemoteAddr(), rightConn.RemoteAddr())
 
-	go openTunnel(rightConn, leftConn, client.ioCopybuffPool, client.conf.Timeout)
-	openTunnel(leftConn, rightConn, client.ioCopybuffPool, client.conf.Timeout)
+	go openTunnel(rightConn, leftConn, client.conf.Timeout)
+	openTunnel(leftConn, rightConn, client.conf.Timeout)
 }
