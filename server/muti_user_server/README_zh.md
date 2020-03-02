@@ -1,12 +1,16 @@
-# mos-tls-tunnel 多用户版服务器
+# mos-tls-tunnel 多用户版服务器 mtt-mu-server
 
 ---
 
 ## 实现功能
 
-多个用户使用mtt-client的wss模式传输数据至统一的端口(如:443)，根据HTTP请求的path不同，将用户分流至相应后端(dst destination)。
+mtt-mu-server可让多个用户使用mtt-client的`wss`模式传输数据至一样的服务器端口(如:443)。用户根据HTTP请求的path(`wss-path`)不同，被分流至相应的后端(`dst` destination)。
 
-`Post` json命令数据至HTTP Controller，对用户进行增删。
+这可增加服务器的隐蔽性与安全性。因为我们不再需要暴露大量的端口给不同的用户。并且如果程序能运行在443端口，它会看起来就像是一个正常的HTTPS服务器。
+
+每个用户都有自己唯一的 `path` 和 `dst`。
+
+使用 HTTP 的 POST 方式将指令发送至Controller，对用户进行增删。
 
 ## 命令行
 
@@ -18,7 +22,11 @@
     -mux
         启用 multiplex
 
-    //如果不提供证书(cert和key)并且没有force-tls，mtt将监听HTTP而非HTTPS。需要格外的HTTPS反向代理才能使客户端连接。(客户端只支持HTTPS)
+    //如果不提供证书(cert和key)并且没有force-tls，
+    //mtt将监听HTTP而非HTTPS。
+    //需要格外的HTTPS反向代理才能使客户端连接。
+    //因为客户端只支持HTTPS
+
     -cert string
         [Path] X509KeyPair cert file
     -key string

@@ -1,12 +1,16 @@
-# mos-tls-tunnel multi-user server
+# mos-tls-tunnel multi-user server (mtt-mu-server)
 
 ---
 
 ## What can multi-user server do
 
-Multiple users use the wss mode of mtt-client to transmit data to a unified port (such as: 443). According to the path of the HTTP request, the users are offloaded to the corresponding backend (dst destination).
+mtt-mu-server allows multiple users to use the `wss` mode of mtt-client to transfer data on the same server port (eg: 443). Users are offloaded to the corresponding backend (`dst` destination) according to the path (`wss-path`) of their HTTP request.
 
-`Post` json command data to HTTP Controller to add or delete users.
+This can increase the concealment and security of the server. Because we no longer need to expose a large number of ports to different users. And if mtt-mu-server can run on port 443, it will look like a normal HTTPS server.
+
+Each user has their own unique `path` and `dst`.
+
+Use HTTP's POST method to send commands to the Controller to add or delete users.
 
 ## Command Line
 
@@ -18,7 +22,10 @@ Multiple users use the wss mode of mtt-client to transmit data to a unified port
     -mux
         Enable multiplex
 
-    // If no certificate (cert and key) is provided and there is no force-tls, mtt will listen on HTTP instead of HTTPS. An extra HTTPS reverse proxy is required for clients to connect. (The client only supports HTTPS)
+    // If no certificate (cert and key) is provided and there is no force-tls, 
+    // mtt will listen on HTTP instead of HTTPS.
+    // An extra HTTPS reverse proxy is required for clients to connect. 
+    // Because the client only supports HTTPS
 
     -cert string
         [Path] X509KeyPair cert file

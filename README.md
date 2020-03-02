@@ -1,12 +1,18 @@
 # mos-tls-tunnel
 
-mos-tls-tunnel is a command line based utility that open a tls tunnel between two addresses and transfers data between them. Also support shadowsocks [SIP003](https://shadowsocks.org/en/spec/Plugin.html) and multi-user server
+mos-tls-tunnel is a command line based utility that open a tls tunnel between two addresses and transfers data between them. Also support shadowsocks [SIP003](https://shadowsocks.org/en/spec/Plugin.html) and [multi-user server](#mtt-server-multi-user-version)
 
 ---
 
-## Android plugin
-
-The Android plugin project is maintained here: [mostunnel-android](https://github.com/IrineSistiana/mostunnel-android). This is a plugin of [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android)
+- [mos-tls-tunnel](#mos-tls-tunnel)
+  - [Usage](#usage)
+  - [WebSocket Secure](#websocket-secure)
+  - [Multiplex (Experimental)](#multiplex-experimental)
+  - [Self Signed Certificate](#self-signed-certificate)
+  - [SIP003](#sip003)
+    - [Android plugin](#android-plugin)
+  - [mtt-server multi-user version (mtt-mu-server)](#mtt-server-multi-user-version-mtt-mu-server)
+  - [Open Source Components / Libraries](#open-source-components--libraries)
 
 ## Usage
 
@@ -72,18 +78,22 @@ client ---> |mtt-client| ---> |mtt-server| ---> destination
         more log
 
 
- **Note**: These options need to be consistent across client and server: 
+ **Note**: In order for the client to connect to the server normally, the following options must be consistent between the client and the server. In other words, if the server has this option, the client must also have this option, and vice versa.
 
-* if server enabled `wss`: `wss`,`wss-path`
-* if server NOT enabled `wss`: `mux`
+* if server enabled `wss`: `wss` and `wss-path` must be consistent
+* if server NOT enabled `wss`: `wss` and `mux` must be consistent
 
 ## WebSocket Secure
 
 mos-tls-tunnel support WebSocket Secure protocol (`wss`). WebSocket connections can be proxied by HTTP server such as Apache, as well as most of CDNs that support WebSocket.
 
+`wss-path` will be the path of HTTP request.
+
 ## Multiplex (Experimental)
 
 mos-tls-tunnel support connection Multiplex (`mux`). It significantly reduces handshake latency, at the cost of high throughput.
+
+Client can set `mux-max-stream` to control the maximum number of data streams in one TCP connection. The value should be between 1 and 16.
 
 if `wss` is enabled, server can automatically detect whether client enable `mux` or not. But you can still use the `mux` to force the server to enable multiplex if auto-detection fails.
 
@@ -97,19 +107,19 @@ We recommend that you use a valid certificate all the time. A free and valid cer
 
 ## SIP003
 
-mos-tls-tunnel support shadowsocks [SIP003](https://shadowsocks.org/en/spec/Plugin.html).Options keys are the same as [Usage](#usage) defined. You don't have to set client and server address: `b`,`d`,`s`, shadowsocks will set those automatically. 
+mos-tls-tunnel support shadowsocks [SIP003](https://shadowsocks.org/en/spec/Plugin.html). Options keys are the same as [Usage](#usage) defined. You don't have to set client and server address: `b`,`d`,`s`, shadowsocks will set those automatically. 
 
 For example:
 
 **Shadowsocks over TLS**:
 
-        ss-server -c config.json --plugin mtt-server --plugin-opts "key=/path/to/your/key;cert=/path/to/your/cert"
-        ss-local -c config.json --plugin mtt-client --plugin-opts "n=your.server.hostname"
+    ss-server -c config.json --plugin mtt-server --plugin-opts "key=/path/to/your/key;cert=/path/to/your/cert"
+    ss-local -c config.json --plugin mtt-client --plugin-opts "n=your.server.hostname"
 
 **Shadowsocks over WebSocket Secure(wss)**:
 
-        ss-server -c config.json --plugin mtt-server --plugin-opts "wss,key=/path/to/your/key;cert=/path/to/your/cert"
-        ss-local -c config.json --plugin mtt-client --plugin-opts "wss;n=your.server.hostname"
+    ss-server -c config.json --plugin mtt-server --plugin-opts "wss,key=/path/to/your/key;cert=/path/to/your/cert"
+    ss-local -c config.json --plugin mtt-client --plugin-opts "wss;n=your.server.hostname"
 
 **Recommended Shadowsocks server and client**:
 
@@ -117,11 +127,17 @@ For example:
 * [shadowsocks-windows](https://github.com/shadowsocks/shadowsocks-windows)
 * [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android)
 
-## mtt-server multi-user version
+### Android plugin
 
-If you want multiple users to use mtt-client's wss mode to transmit data to the same port (such as: 443), here is a multi-user version.
+The Android plugin project is maintained here: [mostunnel-android](https://github.com/IrineSistiana/mostunnel-android). This is a plugin of [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android)
 
-API is simple. Just `Post` a simple json command data to the HTTP Controller and you can add or delete as many users as you want.
+## mtt-server multi-user version (mtt-mu-server)
+
+mtt-mu-server allows multiple users to use the `wss` mode of mtt-client to transfer data on the same server port (eg: 443). Users are offloaded to the corresponding backend (`dst` destination) according to the path (`wss-path`) of their HTTP request.
+
+This can increase the concealment and security of the server. Because we no longer need to expose a large number of ports to different users. And if mtt-mu-server can run on port 443, it will look like a normal HTTPS server.
+
+API is very simple: Use HTTP's POST method to send commands to the Controller to add or delete as many users as you want.
 
 For more, see [here](server/muti_user_server/)
 
