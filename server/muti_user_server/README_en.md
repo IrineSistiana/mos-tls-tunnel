@@ -2,7 +2,7 @@
 
 ---
 
-## What this can do
+## What can multi-user server do
 
 Multiple users use the wss mode of mtt-client to transmit data to a unified port (such as: 443). According to the path of the HTTP request, the users are offloaded to the corresponding backend (dst destination).
 
