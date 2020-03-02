@@ -149,19 +149,20 @@ func (server *Server) Start() error {
 			}
 
 			go func() {
-				server.log.Debugf("leftConn from %s accepted", leftRawConn.RemoteAddr())
+				requestEntry := logrus.WithField("client", leftRawConn.RemoteAddr())
+				requestEntry.Debug("connection accepted")
 
 				leftConn := tls.Server(leftRawConn, server.tlsConf)
 				defer leftConn.Close()
 				if err := leftConn.Handshake(); err != nil {
-					server.log.Errorf("leftConn %s tls handshake: %v", leftRawConn.RemoteAddr(), err)
+					requestEntry.Errorf("tls handshake: %v", err)
 					return
 				}
 
 				if server.conf.EnableMux {
-					server.handleClientMuxConn(leftConn)
+					server.handleClientMuxConn(leftConn, requestEntry)
 				} else {
-					server.handleClientConn(leftConn)
+					server.handleClientConn(leftConn, requestEntry)
 				}
 			}()
 
@@ -180,54 +181,34 @@ func (server *Server) Close() error {
 	return nil
 }
 
-func (server *Server) handleClientConn(leftConn net.Conn) {
-	defer leftConn.Close()
-
+func (server *Server) handleClientConn(leftConn net.Conn, requestEntry *logrus.Entry) {
 	rightConn, err := server.dialDst()
 	if err != nil {
-		server.log.Errorf("dial dst, %v", err)
-		return
+		requestEntry.Errorf("dial dst, %v", err)
 	}
 	defer rightConn.Close()
 
-	go openTunnel(leftConn, rightConn, server.conf.Timeout)
 	openTunnel(rightConn, leftConn, server.conf.Timeout)
 }
 
-func (server *Server) handleClientMuxConn(leftConn net.Conn) {
-	defer leftConn.Close()
-
-	sess, err := smux.Server(leftConn, server.smuxConfig)
-	if err != nil {
-		server.log.Errorf("smux Server, %v", err)
-		return
-	}
-
-	for {
-		if sess.IsClosed() {
-			break
-		}
-		stream, err := sess.AcceptStream()
-		if err != nil {
-			server.log.Errorf("accept stream from %s, %v", sess.RemoteAddr(), err)
-			return
-		}
-		go server.handleClientConn(stream)
-	}
+func (server *Server) handleClientMuxConn(leftConn net.Conn, requestEntry *logrus.Entry) {
+	handleClientMuxConn(server.smuxConfig, defaultSmuxMaxStream, leftConn, server.handleClientConn, requestEntry)
 }
 
 // ServeHTTP implements http.Handler interface
 func (server *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	requestEntry := logrus.WithField("http_client", r.RemoteAddr)
+	requestEntry.Debug("http connection accepted")
 	leftWSConn, err := server.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		server.log.Errorf("upgrade http request from %s, %v", r.RemoteAddr, err)
+		requestEntry.Errorf("upgrade http request, %v", err)
 		return
 	}
-	leftConn := &wsConn{conn: leftWSConn}
+	leftConn := wrapWebSocketConn(leftWSConn)
 	if server.conf.EnableMux {
-		server.handleClientMuxConn(leftConn)
+		server.handleClientMuxConn(leftConn, requestEntry)
 	} else {
-		server.handleClientConn(leftConn)
+		server.handleClientConn(leftConn, requestEntry)
 	}
 }
 

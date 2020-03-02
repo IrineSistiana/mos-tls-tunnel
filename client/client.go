@@ -43,7 +43,7 @@ func main() {
 	commandLine.StringVar(&c.ServerName, "n", "", "Server name. Use to verify the hostname and to support virtual hosting.")
 	commandLine.BoolVar(&c.InsecureSkipVerify, "sv", false, "Skip verify. Client won't verify the server's certificate chain and host name.")
 	commandLine.BoolVar(&c.EnableMux, "mux", false, "Enable multiplex")
-	commandLine.IntVar(&c.MuxMaxStream, "mux-max-stream", 4, "The max number of multiplexed streams in one ture TCP connection")
+	commandLine.IntVar(&c.MuxMaxStream, "mux-max-stream", 4, "The max number of multiplexed streams in one ture TCP connection, 1-16")
 	//tcp options
 	commandLine.DurationVar(&c.Timeout, "timeout", 5*time.Minute, "The idle timeout for connections")
 	commandLine.BoolVar(&c.EnableTFO, "fast-open", false, "(Linux kernel 4.11+ only) Enable TCP fast open")

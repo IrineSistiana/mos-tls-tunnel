@@ -26,7 +26,7 @@ client ---> |mtt-client| ---> |mtt-server| ---> destination
     -mux
         Enable multiplex
     -mux-max-stream int
-        The max number of multiplexed streams in one ture TCP connection (default 4)
+        The max number of multiplexed streams in one ture TCP connection, 1 - 16 (default 4)
         
     -sv
         Skip verify. Client won't verify the server's certificate chain and host name.

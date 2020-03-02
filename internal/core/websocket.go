@@ -27,25 +27,33 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// connection is a wrapper for net.Conn over WebSocket connection.
-type wsConn struct {
-	conn   *websocket.Conn
+var (
+	websocketFormatCloseMessage = websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
+)
+
+// webSocketConnWrapper is a wrapper for net.Conn over WebSocket connection.
+type webSocketConnWrapper struct {
+	ws     *websocket.Conn
 	reader io.Reader
 }
 
+func wrapWebSocketConn(c *websocket.Conn) net.Conn {
+	return &webSocketConnWrapper{ws: c}
+}
+
 func dialWebsocketConn(d *websocket.Dialer, url string) (net.Conn, error) {
-	conn, _, err := d.Dial(url, nil)
-	return &wsConn{conn: conn}, err
+	c, _, err := d.Dial(url, nil)
+	return wrapWebSocketConn(c), err
 }
 
 // Read implements io.Reader.
-func (c *wsConn) Read(b []byte) (int, error) {
+func (c *webSocketConnWrapper) Read(b []byte) (int, error) {
 	var err error
 	for {
 		//previous reader reach the EOF, get next reader
 		if c.reader == nil {
 			//always BinaryMessage
-			_, c.reader, err = c.conn.NextReader()
+			_, c.reader, err = c.ws.NextReader()
 			if err != nil {
 				return 0, err
 			}
@@ -61,33 +69,34 @@ func (c *wsConn) Read(b []byte) (int, error) {
 }
 
 // Write implements io.Writer.
-func (c *wsConn) Write(b []byte) (int, error) {
-	if err := c.conn.WriteMessage(websocket.BinaryMessage, b); err != nil {
+func (c *webSocketConnWrapper) Write(b []byte) (int, error) {
+	if err := c.ws.WriteMessage(websocket.BinaryMessage, b); err != nil {
 		return 0, err
 	}
 	return len(b), nil
 }
 
-func (c *wsConn) Close() error {
-	return c.conn.Close()
+func (c *webSocketConnWrapper) Close() error {
+	c.ws.WriteMessage(websocket.CloseMessage, websocketFormatCloseMessage)
+	return c.ws.Close()
 }
 
-func (c *wsConn) LocalAddr() net.Addr {
-	return c.conn.LocalAddr()
+func (c *webSocketConnWrapper) LocalAddr() net.Addr {
+	return c.ws.LocalAddr()
 }
 
-func (c *wsConn) RemoteAddr() net.Addr {
-	return c.conn.RemoteAddr()
+func (c *webSocketConnWrapper) RemoteAddr() net.Addr {
+	return c.ws.RemoteAddr()
 }
 
-func (c *wsConn) SetDeadline(t time.Time) error {
-	return c.conn.UnderlyingConn().SetDeadline(t)
+func (c *webSocketConnWrapper) SetDeadline(t time.Time) error {
+	return c.ws.UnderlyingConn().SetDeadline(t)
 }
 
-func (c *wsConn) SetReadDeadline(t time.Time) error {
-	return c.conn.SetReadDeadline(t)
+func (c *webSocketConnWrapper) SetReadDeadline(t time.Time) error {
+	return c.ws.SetReadDeadline(t)
 }
 
-func (c *wsConn) SetWriteDeadline(t time.Time) error {
-	return c.conn.SetWriteDeadline(t)
+func (c *webSocketConnWrapper) SetWriteDeadline(t time.Time) error {
+	return c.ws.SetWriteDeadline(t)
 }

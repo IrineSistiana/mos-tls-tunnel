@@ -83,6 +83,10 @@ func NewClient(c *ClientConfig) (*Client, error) {
 		c.ServerName = host
 	}
 
+	if c.MuxMaxStream < 1 || c.MuxMaxStream > defaultSmuxMaxStream {
+		return nil, fmt.Errorf("mux max stream should between 1 - 16")
+	}
+
 	//init
 
 	//logger
@@ -165,9 +169,30 @@ func (client *Client) Start() error {
 		if err != nil {
 			return fmt.Errorf("listener.Accept: %v", err)
 		}
-		client.log.Debugf("leftConn from %s accepted", leftConn.RemoteAddr())
 
-		go client.forwardToServer(leftConn)
+		go func() {
+			client.log.Debugf("leftConn from %s accepted", leftConn.RemoteAddr())
+			defer leftConn.Close()
+			var rightConn net.Conn
+			var err error
+
+			if client.conf.EnableMux {
+				rightConn, err = client.getSmuxStream()
+				if err != nil {
+					client.log.Errorf("mux getStream: %v", err)
+					return
+				}
+			} else {
+				rightConn, err = client.newServerConn()
+				if err != nil {
+					client.log.Errorf("connect to remote: %v", err)
+					return
+				}
+			}
+			defer rightConn.Close()
+
+			openTunnel(leftConn, rightConn, client.conf.Timeout)
+		}()
 	}
 }
 
@@ -246,7 +271,6 @@ func (client *Client) dialNewSmuxSess() (*smux.Session, error) {
 		}
 	}()
 
-	client.smuxSessPool.Store(sess, nil)
 	client.log.Debugf("new sess %p opend", sess)
 	return sess, nil
 }
@@ -283,31 +307,8 @@ func (client *Client) getSmuxStream() (*smux.Stream, error) {
 		if err != nil {
 			return nil, err
 		}
+		client.smuxSessPool.Store(sess, nil)
 		return sess.OpenStream()
 	}
 	return stream, nil
-}
-
-func (client *Client) forwardToServer(leftConn net.Conn) {
-	defer leftConn.Close()
-	var rightConn net.Conn
-	var err error
-
-	if client.conf.EnableMux {
-		rightConn, err = client.getSmuxStream()
-		if err != nil {
-			client.log.Errorf("mux getStream: %v", err)
-			return
-		}
-	} else {
-		rightConn, err = client.newServerConn()
-		if err != nil {
-			client.log.Errorf("connect to remote: %v", err)
-			return
-		}
-	}
-	client.log.Debugf("rightConn from %s to %s established", leftConn.RemoteAddr(), rightConn.RemoteAddr())
-
-	go openTunnel(rightConn, leftConn, client.conf.Timeout)
-	openTunnel(leftConn, rightConn, client.conf.Timeout)
 }

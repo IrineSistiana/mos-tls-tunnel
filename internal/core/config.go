@@ -29,6 +29,8 @@ const (
 	defaultWSIOBufferSize   = 32 * 1024
 	defaultCopyIOBufferSize = 16 * 1024
 	defaultHandShakeTimeout = time.Second * 10
+
+	defaultSmuxMaxStream = 16
 )
 
 func defaultSmuxConfig() *smux.Config {

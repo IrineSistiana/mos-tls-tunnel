@@ -23,5 +23,9 @@ import "errors"
 
 //err
 var (
+	//SIP003
 	ErrBrokenSIP003Args = errors.New("invalid SIP003 args")
+
+	//smux
+	ErrTooManyStreams = errors.New("opened too many streams")
 )

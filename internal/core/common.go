@@ -24,13 +24,21 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"github.com/xtaci/smux"
 )
 
 var ioCopybuffPool = &sync.Pool{New: func() interface{} {
 	return make([]byte, defaultCopyIOBufferSize)
 }}
 
-func openTunnel(dst, src net.Conn, timeout time.Duration) {
+func openTunnel(a, b net.Conn, timeout time.Duration) {
+	go openOneWayTunnel(a, b, timeout)
+	openOneWayTunnel(b, a, timeout)
+}
+
+func openOneWayTunnel(dst, src net.Conn, timeout time.Duration) {
 	buf := ioCopybuffPool.Get().([]byte)
 	copyBuffer(dst, src, buf, timeout)
 	dst.Close()
@@ -70,4 +78,29 @@ func copyBuffer(dst net.Conn, src net.Conn, buf []byte, timeout time.Duration) (
 		}
 	}
 	return written, err
+}
+
+func handleClientMuxConn(smuxConfig *smux.Config, maxStream int, conn net.Conn, handleStream func(net.Conn, *logrus.Entry), requestEntry *logrus.Entry) {
+	sess, err := smux.Server(conn, smuxConfig)
+	if err != nil {
+		requestEntry.Errorf("smux server, %v", err)
+	}
+
+	for {
+		if sess.IsClosed() {
+			return
+		}
+		stream, err := sess.AcceptStream()
+		if err != nil {
+			requestEntry.Errorf("accept smux stream, %v", err)
+			return
+		}
+		if sess.NumStreams() > maxStream {
+			requestEntry.Error(ErrTooManyStreams)
+			return
+		}
+		requestEntry.Debug("accepted a smux stream")
+
+		go handleStream(stream, requestEntry)
+	}
 }

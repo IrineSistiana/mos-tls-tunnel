@@ -43,6 +43,7 @@ var (
 		BindAddr:           clientBindAddr,
 		RemoteAddr:         serverBindAddr,
 		Timeout:            time.Second * 30,
+		MuxMaxStream:       4,
 		InsecureSkipVerify: true}
 	serverTestConfig = &ServerConfig{BindAddr: serverBindAddr,
 		Timeout: time.Second * 30,
