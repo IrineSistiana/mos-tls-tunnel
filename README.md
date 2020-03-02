@@ -1,6 +1,6 @@
 # mos-tls-tunnel
 
-mos-tls-tunnel is a command line based utility that open a tls tunnel between two addresses and transfers data between them. Also support shadowsocks [SIP003](https://shadowsocks.org/en/spec/Plugin.html)
+mos-tls-tunnel is a command line based utility that open a tls tunnel between two addresses and transfers data between them. Also support shadowsocks [SIP003](https://shadowsocks.org/en/spec/Plugin.html) and multi-user server
 
 ---
 
@@ -116,6 +116,14 @@ For example:
 * [shadowsocks-libev](https://github.com/shadowsocks/shadowsocks-libev)
 * [shadowsocks-windows](https://github.com/shadowsocks/shadowsocks-windows)
 * [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android)
+
+## mtt-server multi-user version
+
+If you want multiple users to use mtt-client's wss mode to transmit data to the same port (such as: 443), here is a multi-user version.
+
+API is simple. Just `Post` a simple json command data to the HTTP Controller and you can add or delete as many users as you want.
+
+For more, see [here](server/muti_user_server/)
 
 ## Open Source Components / Libraries
 
