@@ -29,6 +29,10 @@ import (
 
 var (
 	websocketFormatCloseMessage = websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
+
+	//smux subprotocol
+	websocketSubprotocolSmuxON  = "smux_on"
+	websocketSubprotocolSmuxOFF = "smux_off"
 )
 
 // webSocketConnWrapper is a wrapper for net.Conn over WebSocket connection.

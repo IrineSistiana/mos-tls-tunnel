@@ -72,7 +72,10 @@ client ---> |mtt-client| ---> |mtt-server| ---> destination
         more log
 
 
- **Note**: These options need to be consistent across client and server: `mux`,`wss`,`wss-path`
+ **Note**: These options need to be consistent across client and server: 
+
+* if server enabled `wss`: `wss`,`wss-path`
+* if server NOT enabled `wss`: `mux`
 
 ## WebSocket Secure
 
@@ -81,6 +84,8 @@ mos-tls-tunnel support WebSocket Secure protocol (`wss`). WebSocket connections 
 ## Multiplex (Experimental)
 
 mos-tls-tunnel support connection Multiplex (`mux`). It significantly reduces handshake latency, at the cost of high throughput.
+
+if `wss` is enabled, server can automatically detect whether client enable `mux` or not. But you can still use the `mux` to force the server to enable multiplex if auto-detection fails.
 
 ## Self Signed Certificate
 

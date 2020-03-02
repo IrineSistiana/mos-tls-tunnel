@@ -116,6 +116,8 @@ func NewServer(c *ServerConfig) (*Server, error) {
 		HandshakeTimeout: defaultHandShakeTimeout,
 		ReadBufferSize:   0, // buffers allocated by the HTTP server are used
 		WriteBufferSize:  0,
+
+		Subprotocols: []string{websocketSubprotocolSmuxON, websocketSubprotocolSmuxOFF},
 	}
 
 	server.smuxConfig = defaultSmuxConfig()
@@ -204,11 +206,20 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		requestEntry.Errorf("upgrade http request, %v", err)
 		return
 	}
+
 	leftConn := wrapWebSocketConn(leftWSConn)
-	if server.conf.EnableMux {
+
+	switch leftWSConn.Subprotocol() {
+	case websocketSubprotocolSmuxON:
 		server.handleClientMuxConn(leftConn, requestEntry)
-	} else {
+	case websocketSubprotocolSmuxOFF:
 		server.handleClientConn(leftConn, requestEntry)
+	default:
+		if server.conf.EnableMux {
+			server.handleClientMuxConn(leftConn, requestEntry)
+		} else {
+			server.handleClientConn(leftConn, requestEntry)
+		}
 	}
 }
 

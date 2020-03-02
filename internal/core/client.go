@@ -126,6 +126,11 @@ func NewClient(c *ClientConfig) (*Client, error) {
 		WriteBufferPool:  &sync.Pool{},
 		HandshakeTimeout: defaultHandShakeTimeout,
 	}
+	if c.EnableMux {
+		client.wsDialer.Subprotocols = []string{websocketSubprotocolSmuxON}
+	} else {
+		client.wsDialer.Subprotocols = []string{websocketSubprotocolSmuxOFF}
+	}
 
 	// fallback dns
 	if len(c.FallbackDNS) != 0 {

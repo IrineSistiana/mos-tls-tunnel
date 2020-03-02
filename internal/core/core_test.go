@@ -169,3 +169,16 @@ func Test_wss_mux(t *testing.T) {
 	clientTestConfig.EnableMux = true
 	test(serverTestConfig, clientTestConfig, t)
 }
+
+func Test_wss_auto_mux(t *testing.T) {
+	serverTestConfig.EnableWSS = true
+	serverTestConfig.WSSPath = "/"
+	serverTestConfig.EnableMux = false
+	clientTestConfig.EnableWSS = true
+	clientTestConfig.WSSPath = "/"
+	clientTestConfig.EnableMux = false
+	test(serverTestConfig, clientTestConfig, t)
+
+	clientTestConfig.EnableMux = true
+	test(serverTestConfig, clientTestConfig, t)
+}
