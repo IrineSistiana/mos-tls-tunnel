@@ -1,15 +1,20 @@
 # mos-tls-tunnel
 
-mos-tls-tunnel is a command line based utility that open a tls tunnel between two addresses and transfers data between them. Also support shadowsocks [SIP003](https://shadowsocks.org/en/spec/Plugin.html) and [multi-user server](#mtt-server-multi-user-version)
+mos-tls-tunnel is a command line based utility that open a tls tunnel between two addresses and transfers data between them. Also support shadowsocks [SIP003](https://shadowsocks.org/en/spec/Plugin.html) and [multi-user server](#mtt-server-multi-user-version-mtt-mu-server).
 
 ---
 
 - [mos-tls-tunnel](#mos-tls-tunnel)
   - [Usage](#usage)
+    - [mtt-client](#mtt-client)
+    - [mtt-server](#mtt-server)
+    - [mtt-mu-server](#mtt-mu-server)
   - [WebSocket Secure](#websocket-secure)
   - [Multiplex (Experimental)](#multiplex-experimental)
   - [Self Signed Certificate](#self-signed-certificate)
   - [Shadowsocks Plugin (SIP003)](#shadowsocks-plugin-sip003)
+    - [Example Command](#example-command)
+    - [Recommended Shadowsocks server and client](#recommended-shadowsocks-server-and-client)
     - [Android plugin](#android-plugin)
   - [mtt-server Multi-user Version (mtt-mu-server)](#mtt-server-multi-user-version-mtt-mu-server)
   - [Open Source Components / Libraries](#open-source-components--libraries)
@@ -18,7 +23,12 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
 
 client ---> |mtt-client| ---> |mtt-server| ---> destination
 
-**mtt-client**:
+ **Note**: In order for the client to connect to the server normally, the following options must be consistent between the client and the server. In other words, if the server has this option, the client must also have this option, and vice versa.
+
+* if server enabled `wss`: `wss` and `wss-path` must be consistent.
+* if server NOT enabled `wss`: `wss` and `mux` must be consistent.
+
+### mtt-client
 
     -b string
         [Host:Port] Bind address, e.g. '127.0.0.1:1080'
@@ -34,7 +44,7 @@ client ---> |mtt-client| ---> |mtt-server| ---> destination
     -mux-max-stream int
         The max number of multiplexed streams in one ture TCP connection, 1 - 16 (default 4)
 
-    // Geek options
+<details><summary><code>Geek options</code></summary><br>
 
     -sv
         Skip verify. Client won't verify the server's certificate chain and host name.
@@ -50,7 +60,9 @@ client ---> |mtt-client| ---> |mtt-server| ---> destination
     -verbose
         more log
 
-**mtt-server**:
+</details>
+
+### mtt-server
 
     -b string
         [Host:Port] Bind address, e.g. '127.0.0.1:1080'
@@ -69,7 +81,7 @@ client ---> |mtt-client| ---> |mtt-server| ---> destination
     -key string
         [Path] X509KeyPair key file
 
-    // Geek options
+<details><summary><code>Geek options</code></summary><br>
 
     -fast-open
         (Linux kernel 4.11+ only) Enable TCP fast open
@@ -81,11 +93,11 @@ client ---> |mtt-client| ---> |mtt-server| ---> destination
     -verbose
         more log
 
+</details>
 
- **Note**: In order for the client to connect to the server normally, the following options must be consistent between the client and the server. In other words, if the server has this option, the client must also have this option, and vice versa.
+### mtt-mu-server
 
-* if server enabled `wss`: `wss` and `wss-path` must be consistent
-* if server NOT enabled `wss`: `wss` and `mux` must be consistent
+See [here](#mtt-server-multi-user-version-mtt-mu-server)
 
 ## WebSocket Secure
 
@@ -113,19 +125,21 @@ We recommend that you use a valid certificate all the time. A free and valid cer
 
 mos-tls-tunnel support shadowsocks [SIP003](https://shadowsocks.org/en/spec/Plugin.html). Options keys are the same as [Usage](#usage) defined. You don't have to set client and server address: `b`,`d`,`s`, shadowsocks will set those automatically. 
 
-For example:
+### Example Command 
 
-**Shadowsocks over TLS**:
+Below are example commands with [shadowsocks-libev](https://github.com/shadowsocks/shadowsocks-libev).
+
+**Shadowsocks over TLS**
 
     ss-server -c config.json --plugin mtt-server --plugin-opts "key=/path/to/your/key;cert=/path/to/your/cert"
     ss-local -c config.json --plugin mtt-client --plugin-opts "n=your.server.hostname"
 
-**Shadowsocks over WebSocket Secure(wss)**:
+**Shadowsocks over WebSocket Secure(wss)**
 
     ss-server -c config.json --plugin mtt-server --plugin-opts "wss,key=/path/to/your/key;cert=/path/to/your/cert"
     ss-local -c config.json --plugin mtt-client --plugin-opts "wss;n=your.server.hostname"
 
-**Recommended Shadowsocks server and client**:
+### Recommended Shadowsocks server and client
 
 * [shadowsocks-libev](https://github.com/shadowsocks/shadowsocks-libev)
 * [shadowsocks-windows](https://github.com/shadowsocks/shadowsocks-windows)
@@ -133,7 +147,7 @@ For example:
 
 ### Android plugin
 
-The Android plugin project is maintained here: [mostunnel-android](https://github.com/IrineSistiana/mostunnel-android). This is a plugin of [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android)
+The Android plugin project is maintained here: [mostunnel-android](https://github.com/IrineSistiana/mostunnel-android). This is a plugin of [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android).
 
 ## mtt-server Multi-user Version (mtt-mu-server)
 
@@ -143,7 +157,7 @@ This can increase the concealment and security of the server. Because we no long
 
 API is very simple: Use HTTP's POST method to send commands to the Controller to add or delete as many users as you want.
 
-For more, see [here](server/muti_user_server/)
+For more, see [here](server/muti_user_server/).
 
 ## Open Source Components / Libraries
 
