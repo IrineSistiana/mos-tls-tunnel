@@ -21,7 +21,9 @@ package core
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"sync"
@@ -51,17 +53,17 @@ var (
 	}
 )
 
-type echoServer struct {
-	buf [dataSize]byte
+type dstServer struct {
+	buf [1024 * 1024]byte
 	l   net.Listener
 }
 
-func newEchoServer(addr string) (*echoServer, error) {
+func runDstServer(addr string, echo bool) (*dstServer, error) {
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
-	e := &echoServer{
+	e := &dstServer{
 		l: l,
 	}
 
@@ -72,26 +74,37 @@ func newEchoServer(addr string) (*echoServer, error) {
 				log.Print(err)
 				return
 			}
-			i, err := conn.Read(e.buf[:])
-			if err != nil {
-				log.Print(err)
-			}
-			_, err = conn.Write(e.buf[:i])
-			if err != nil {
-				log.Print(err)
-			}
+			go func() {
+				for {
+					i, err := conn.Read(e.buf[:])
+					if err != nil {
+						log.Print(err)
+						return
+					}
+					if echo {
+						_, err = conn.Write(e.buf[:i])
+						if err != nil {
+							log.Print(err)
+							return
+						}
+					} else {
+						ioutil.Discard.Write(e.buf[:i])
+					}
+				}
+			}()
+
 		}
 	}()
 
 	return e, nil
 }
 
-func (e *echoServer) close() error {
+func (e *dstServer) close() error {
 	return e.l.Close()
 }
 
 func test(sc *ServerConfig, cc *ClientConfig, t *testing.T) {
-	echo, err := newEchoServer(dstAddr)
+	echo, err := runDstServer(dstAddr, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,4 +194,100 @@ func Test_wss_auto_mux(t *testing.T) {
 
 	clientTestConfig.EnableMux = true
 	test(serverTestConfig, clientTestConfig, t)
+}
+
+func bench(sc *ServerConfig, cc *ClientConfig, b *testing.B) (conn net.Conn) {
+
+	echo, err := runDstServer(dstAddr, false)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer echo.close()
+
+	wg := sync.WaitGroup{}
+
+	client, err := NewClient(clientTestConfig)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer client.Close()
+	wg.Add(1)
+	go func() {
+		fmt.Printf("client exited [%v]", client.Start())
+		wg.Done()
+	}()
+
+	server, err := NewServer(serverTestConfig)
+	if err != nil {
+		b.Fatal(err)
+	}
+	wg.Add(1)
+	go func() {
+		fmt.Printf("server exited [%v]", server.Start())
+		wg.Done()
+	}()
+	defer server.Close()
+
+	time.Sleep(500 * time.Millisecond)
+
+	localConn, err := net.Dial("tcp", clientBindAddr)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer localConn.Close()
+
+	garbage := make([]byte, 64*1024)
+	_, err = rand.Read(garbage)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	t := time.Now()
+	for i := 0; i < b.N; i++ {
+		localConn.Write(garbage)
+	}
+	b.StopTimer()
+
+	b.Logf("[%f kb/s]", float64(b.N*64)/time.Since(t).Seconds())
+
+	// force to close so wg can be released
+	client.Close()
+	server.Close()
+	wg.Wait()
+
+	return
+}
+
+func Benchmark_plain(b *testing.B) {
+	bench(serverTestConfig, clientTestConfig, b)
+}
+
+func Benchmark_mux(b *testing.B) {
+	serverTestConfig.EnableWSS = false
+	serverTestConfig.EnableMux = true
+	clientTestConfig.EnableWSS = false
+	clientTestConfig.EnableMux = true
+	bench(serverTestConfig, clientTestConfig, b)
+}
+
+func Benchmark_wss(b *testing.B) {
+	serverTestConfig.EnableWSS = true
+	serverTestConfig.EnableMux = false
+	serverTestConfig.WSSPath = "/"
+	clientTestConfig.EnableWSS = true
+	clientTestConfig.EnableMux = false
+	clientTestConfig.WSSPath = "/"
+	bench(serverTestConfig, clientTestConfig, b)
+}
+
+func Benchmark_wss_mux(b *testing.B) {
+	serverTestConfig.EnableWSS = true
+	serverTestConfig.WSSPath = "/"
+	serverTestConfig.EnableMux = true
+	clientTestConfig.EnableWSS = true
+	clientTestConfig.WSSPath = "/"
+	clientTestConfig.EnableMux = true
+	bench(serverTestConfig, clientTestConfig, b)
 }

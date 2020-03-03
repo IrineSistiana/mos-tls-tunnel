@@ -39,7 +39,7 @@ var (
 )
 
 func Test_MU(t *testing.T) {
-	echo, err := newEchoServer(muDstAddr)
+	echo, err := runDstServer(muDstAddr, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,8 +81,6 @@ func Test_MU(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	fmt.Printf(string(b))
 
 	resp, err := http.Post("http://"+muControllrAddr, "", bytes.NewReader(b))
 	if err != nil {
