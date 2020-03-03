@@ -57,8 +57,9 @@ const (
 
 //MURes is a update result
 type MURes struct {
-	Res       int    `json:"res,omitempty"`
-	ErrString string `json:"err_string,omitempty"`
+	Res          int    `json:"res,omitempty"`
+	ErrString    string `json:"err_string,omitempty"`
+	CurrentUsers int    `json:"current_users,omitempty"`
 }
 
 //MURes res id
@@ -167,46 +168,39 @@ func (mus *MUServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch muCmd.Opt {
 	case OptAdd:
 		if len(muCmd.ArgsBunch) == 0 {
-			sendMURes(w, ResErr, "empty args")
+			sendMURes(w, ResErr, 0, "empty args")
 			return
 		}
 		mus.mux.add(muCmd.ArgsBunch)
-		sendMURes(w, ResOK, "")
+		sendMURes(w, ResOK, 0, "")
 	case OptDel:
 		if len(muCmd.ArgsBunch) == 0 {
-			sendMURes(w, ResErr, "empty args")
+			sendMURes(w, ResErr, 0, "empty args")
 			return
 		}
 		mus.mux.del(muCmd.ArgsBunch)
-		sendMURes(w, ResOK, "")
+		sendMURes(w, ResOK, 0, "")
 	case OptReset:
 		mus.mux.reset()
-		sendMURes(w, ResOK, "")
+		sendMURes(w, ResOK, 0, "")
 	case OptPing:
-		sendMURes(w, ResOK, "")
+		sendMURes(w, ResOK, mus.mux.len(), "")
 	default:
-		mus.logger.Warnf("invalid Opt from %s , %d", r.RemoteAddr, muCmd.Opt)
-		sendMURes(w, ResErr, "invalid Opt")
+		mus.logger.Warnf("invalid opt from %s , %d", r.RemoteAddr, muCmd.Opt)
+		sendMURes(w, ResErr, 0, "invalid opt")
 	}
 }
 
-func sendMURes(w http.ResponseWriter, res int, errStr string) error {
-	data, err := generateMURes(res, errStr)
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(data)
-	return err
-}
-
-func generateMURes(res int, errStr string) ([]byte, error) {
+func sendMURes(w http.ResponseWriter, res, currentUsers int, errStr string) error {
 	muRes := MURes{
-		Res:       res,
-		ErrString: errStr,
+		Res:          res,
+		ErrString:    errStr,
+		CurrentUsers: currentUsers,
 	}
 	b, err := json.Marshal(muRes)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return b, nil
+	_, err = w.Write(b)
+	return err
 }

@@ -92,11 +92,12 @@ func handleClientMuxConn(smuxConfig *smux.Config, maxStream int, conn net.Conn, 
 		}
 		stream, err := sess.AcceptStream()
 		if err != nil {
-			requestEntry.Errorf("accept smux stream, %v", err)
+			requestEntry.Warnf("accept smux stream, %v", err)
 			return
 		}
 		if sess.NumStreams() > maxStream {
-			requestEntry.Error(ErrTooManyStreams)
+			stream.Close()
+			requestEntry.Warn(ErrTooManyStreams)
 			return
 		}
 		requestEntry.Debug("accepted a smux stream")

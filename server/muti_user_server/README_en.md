@@ -45,6 +45,8 @@ The Controller accepts HTTP POST requests. The body of a single request cannot b
 
 **Controller json command format example:**
 
+<details><summary><code>Add user</code></summary><br>
+
     {
         "opt": 1,
         "args_bunch": [
@@ -56,17 +58,49 @@ The Controller accepts HTTP POST requests. The body of a single request cannot b
                 "path": "/path_2",
                 "dst": "127.0.0.1:10002"
             }
-
             ...
         ]
     }
+
+</details>
+
+<details><summary><code>Delete user</code></summary><br>
+
+    {
+        "opt": 2,
+        "args_bunch": [
+            {
+                "path": "/path_1"
+            },
+            {
+                "path": "/path_2"
+            }
+            ...
+        ]
+    }
+
+</details>
+
+<details><summary><code>Reset server or Ping</code></summary><br>
+
+    {
+        "opt": 3
+    }
+
+    {
+        "opt": 9
+    }
+
+</details>
 
 **opt:**
 
 * 1: Add users from `args_bunch`. `args_bunch`,`path` and `dst` are required. Repeated `path` will be overwrited.
 * 2: Delete the user by `path` in `args_bunch`. `args_bunch` and `path` are required. The existing `path` will be deleted. Non-existent `path`s are ignored.
 * 3: Reset server, delete all users.
-* 9: Send a Ping, Controller responds with an OK.
+* 9: Ping: The Controller responds with a Pong to report the current number of users. If it returns 0, it may mean that the server has restarted and needs to synchronize user data.
+
+Changing or deleting a user does not affect the user's established connection.
 
 **args_bunch:**
 
@@ -74,12 +108,39 @@ The Controller accepts HTTP POST requests. The body of a single request cannot b
 
 **Controller json response example:**
 
+<details><summary><code>OK</code></summary><br>
+
     {
         "res": 1,
-        "err_string":""
+        "err_string":"",
+        "current_users": 0
     }
+
+</details>
+
+<details><summary><code>Err</code></summary><br>
+
+    {
+        "res": 2,
+        "err_string":"invalid opt",
+        "current_users": 0
+    }
+
+</details>
+
+<details><summary><code>Pong</code></summary><br>
+
+    {
+        "res": 1,
+        "err_string":"",
+        "current_users": 2102
+    }
+
+</details>
 
 **res:**
 
 * 1: The command was executed successfully.
 * 2: An error occurred, `err_string` will contain error description.
+
+**current_users:** Only valid when `"opt": 9`(Ping). The number of users that have been added for the current server.

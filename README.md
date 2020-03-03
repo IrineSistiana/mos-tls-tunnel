@@ -9,9 +9,9 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
   - [WebSocket Secure](#websocket-secure)
   - [Multiplex (Experimental)](#multiplex-experimental)
   - [Self Signed Certificate](#self-signed-certificate)
-  - [SIP003](#sip003)
+  - [Shadowsocks Plugin (SIP003)](#shadowsocks-plugin-sip003)
     - [Android plugin](#android-plugin)
-  - [mtt-server multi-user version (mtt-mu-server)](#mtt-server-multi-user-version-mtt-mu-server)
+  - [mtt-server Multi-user Version (mtt-mu-server)](#mtt-server-multi-user-version-mtt-mu-server)
   - [Open Source Components / Libraries](#open-source-components--libraries)
 
 ## Usage
@@ -33,7 +33,9 @@ client ---> |mtt-client| ---> |mtt-server| ---> destination
         Enable multiplex
     -mux-max-stream int
         The max number of multiplexed streams in one ture TCP connection, 1 - 16 (default 4)
-        
+
+    // Geek options
+
     -sv
         Skip verify. Client won't verify the server's certificate chain and host name.
     -fast-open
@@ -55,17 +57,19 @@ client ---> |mtt-client| ---> |mtt-server| ---> destination
     -d string
         [Host:Port] Destination address
 
-    -cert string
-        [Path] X509KeyPair cert file
-    -key string
-        [Path] X509KeyPair key file
-
     -wss
         Enable WebSocket Secure protocol
     -wss-path string
         WebSocket path (default "/")
     -mux
         Enable multiplex
+
+    -cert string
+        [Path] X509KeyPair cert file
+    -key string
+        [Path] X509KeyPair key file
+
+    // Geek options
 
     -fast-open
         (Linux kernel 4.11+ only) Enable TCP fast open
@@ -105,7 +109,7 @@ On the client, if server's certificate can't be verified. You can enable `sv` to
 
 We recommend that you use a valid certificate all the time. A free and valid certificate can be easily obtained here. [Let's Encrypt](https://letsencrypt.org/)
 
-## SIP003
+## Shadowsocks Plugin (SIP003)
 
 mos-tls-tunnel support shadowsocks [SIP003](https://shadowsocks.org/en/spec/Plugin.html). Options keys are the same as [Usage](#usage) defined. You don't have to set client and server address: `b`,`d`,`s`, shadowsocks will set those automatically. 
 
@@ -131,7 +135,7 @@ For example:
 
 The Android plugin project is maintained here: [mostunnel-android](https://github.com/IrineSistiana/mostunnel-android). This is a plugin of [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android)
 
-## mtt-server multi-user version (mtt-mu-server)
+## mtt-server Multi-user Version (mtt-mu-server)
 
 mtt-mu-server allows multiple users to use the `wss` mode of mtt-client to transfer data on the same server port (eg: 443). Users are offloaded to the corresponding backend (`dst` destination) according to the path (`wss-path`) of their HTTP request.
 

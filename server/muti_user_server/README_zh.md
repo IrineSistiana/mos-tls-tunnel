@@ -45,6 +45,8 @@ Controller 接受 HTTP POST 请求。单次请求的Body不能大于2M。
 
 **Controller json命令格式示例：**
 
+<details><summary><code>Add user</code></summary><br>
+
     {
         "opt": 1,
         "args_bunch": [
@@ -56,17 +58,49 @@ Controller 接受 HTTP POST 请求。单次请求的Body不能大于2M。
                 "path": "/path_2",
                 "dst": "127.0.0.1:10002"
             }
-
             ...
         ]
     }
 
+</details>
+
+<details><summary><code>Delete user</code></summary><br>
+
+    {
+        "opt": 2,
+        "args_bunch": [
+            {
+                "path": "/path_1"
+            },
+            {
+                "path": "/path_2"
+            }
+            ...
+        ]
+    }
+
+</details>
+
+<details><summary><code>Reset server or Ping</code></summary><br>
+
+    {
+        "opt": 3
+    }
+
+    {
+        "opt": 9
+    }
+
+</details>
+
 **opt:**
 
-* 1: 从`args_bunch`添加用户。`args_bunch`, `path`和`dst`为必需。会覆盖重复的`path`
-* 2: 按照`args_bunch`中的`path`删除用户。`args_bunch`和`path`为必需。存在的`path`会被删除。不存在的`path`会被忽略。
-* 3: 重置mtt，删除所有用户数据。
-* 9: 发送一个Ping，Controller回复一个OK。
+* 1: Add: 从`args_bunch`添加用户。`args_bunch`, `path`和`dst`为必需。会覆盖重复的`path`。
+* 2: Del: 按照`args_bunch`中的`path`删除用户。`args_bunch`和`path`为必需。存在的`path`会被删除。不存在的`path`会被忽略。
+* 3: Reset: 重置mtt-mu-server，删除所有用户数据。
+* 9: Ping: 发送一个Ping，Controller回复一个Pong报告当前用户数量。如果返回0可能意味着服务端已重启,需要同步用户数据。
+
+更改或删除用户不会影响用户已建立的连接。
 
 **args_bunch:**
 
@@ -74,12 +108,40 @@ Controller 接受 HTTP POST 请求。单次请求的Body不能大于2M。
 
 **Controller json回复示例：**
 
+<details><summary><code>OK</code></summary><br>
+
     {
         "res": 1,
-        "err_string":""
+        "err_string":"",
+        "current_users": 0
     }
+
+</details>
+
+<details><summary><code>Err</code></summary><br>
+
+    {
+        "res": 2,
+        "err_string":"invalid opt",
+        "current_users": 0
+    }
+
+</details>
+
+<details><summary><code>Pong</code></summary><br>
+
+    {
+        "res": 1,
+        "err_string":"",
+        "current_users": 2102
+    }
+
+</details>
 
 **res:** 
 
 * 1: 命令执行成功。
 * 2: 命令执行错误，`err_string`会包含错误说明。
+
+**current_users:**  仅在`"opt": 9`(Ping)时有效。为当前服务器已添加的用户数。
+

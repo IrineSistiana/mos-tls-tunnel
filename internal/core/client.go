@@ -297,7 +297,7 @@ func (client *Client) getSmuxStream() (*smux.Stream, error) {
 			stream, er = sess.OpenStream()
 			if er != nil {
 				client.smuxSessPool.Delete(sess)
-				client.log.Errorf("deleted err sess %p: open stream: %v", sess, er)
+				client.log.Warnf("deleted err sess %p: open stream: %v", sess, er)
 				return true
 			}
 			return false

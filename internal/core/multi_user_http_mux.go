@@ -90,6 +90,13 @@ func (m *mux) get(path string) (des string, ok bool) {
 	return
 }
 
+func (m *mux) len() int {
+	m.RLock()
+	n := len(m.pathMap)
+	m.RUnlock()
+	return n
+}
+
 // ServeHTTP implements http.Handler interface
 func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestEntry := m.log.WithField("client", r.RemoteAddr)
@@ -105,6 +112,7 @@ func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		requestEntry.Warnf("upgrade http request failed, %v", err)
 		return
 	}
+	defer leftWSConn.Close()
 
 	leftConn := wrapWebSocketConn(leftWSConn)
 	switch leftWSConn.Subprotocol() {
@@ -133,23 +141,8 @@ func (m *mux) handleClientConn(leftConn net.Conn, dst string, requestEntry *logr
 }
 
 func (m *mux) handleClientMuxConn(leftConn net.Conn, dst string, requestEntry *logrus.Entry) {
-	defer leftConn.Close()
-
-	sess, err := smux.Server(leftConn, m.smuxConfig)
-	if err != nil {
-		requestEntry.Warnf("smux Server, %v", err)
-		return
+	handleClientConn := func(c net.Conn, r *logrus.Entry) {
+		m.handleClientConn(c, dst, r)
 	}
-
-	for {
-		if sess.IsClosed() {
-			break
-		}
-		stream, err := sess.AcceptStream()
-		if err != nil {
-			requestEntry.Warnf("accept stream, %v", err)
-			return
-		}
-		go m.handleClientConn(stream, dst, requestEntry)
-	}
+	handleClientMuxConn(m.smuxConfig, defaultSmuxMaxStream, leftConn, handleClientConn, requestEntry)
 }
