@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -112,6 +113,9 @@ func NewClient(c *ClientConfig) (*Client, error) {
 	}
 
 	//ws
+	if !strings.HasPrefix(c.WSSPath, "/") {
+		c.WSSPath = "/" + c.WSSPath
+	}
 	client.wssURL = "wss://" + c.ServerName + c.WSSPath
 	internelDial := func(network, addr string) (net.Conn, error) {
 		// overwrite url host addr
