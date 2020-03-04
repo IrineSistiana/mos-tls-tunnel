@@ -36,8 +36,8 @@ func main() {
 
 	commandLine := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 
-	commandLine.StringVar(&c.BindAddr, "b", "", "[Host:Port] or [Path](if bind-unix) Server bind address, e.g. '127.0.0.1:1080', '/run/mmt-server'")
-	commandLine.BoolVar(&c.BindUnix, "bind-unix", false, "Bind on a Unix domain socket")
+	commandLine.StringVar(&c.BindAddr, "b", "", "[Host:Port] or [Path](if bind-unix) Server bind address, e.g. '127.0.0.1:1080', '/run/mmt-server', '@mmt-server'")
+	commandLine.BoolVar(&c.BindUnix, "bind-unix", false, "Bind on unix socket instead of TCP socket.")
 	commandLine.StringVar(&c.DstAddr, "d", "", "[Host:Port] Destination address")
 
 	commandLine.StringVar(&c.Cert, "cert", "", "[Path] X509KeyPair cert file")
