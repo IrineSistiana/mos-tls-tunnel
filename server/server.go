@@ -36,14 +36,17 @@ func main() {
 
 	commandLine := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 
-	commandLine.StringVar(&c.BindAddr, "b", "", "[Host:Port] Bind address, e.g. '127.0.0.1:1080'")
+	commandLine.StringVar(&c.BindAddr, "b", "", "[Host:Port] or [Path](if bind-unix) Server bind address, e.g. '127.0.0.1:1080', '/run/mmt-server'")
+	commandLine.BoolVar(&c.BindUnix, "bind-unix", false, "Bind on a Unix domain socket")
 	commandLine.StringVar(&c.DstAddr, "d", "", "[Host:Port] Destination address")
+
 	commandLine.StringVar(&c.Cert, "cert", "", "[Path] X509KeyPair cert file")
 	commandLine.StringVar(&c.Key, "key", "", "[Path] X509KeyPair key file")
+	commandLine.BoolVar(&c.DisableTLS, "disable-tls", false, "disable TLS. An extra TLS proxy is required, such as Nginx SSL Stream Module")
+	commandLine.StringVar(&c.ServerName, "n", "", "Server name. Use to generate self signed certificate DNSName")
 
 	commandLine.BoolVar(&c.EnableWSS, "wss", false, "Enable WebSocket Secure protocol")
 	commandLine.StringVar(&c.WSSPath, "wss-path", "/", "WebSocket path")
-	commandLine.StringVar(&c.ServerName, "n", "", "Server name. Use to generate self signed certificate DNSName")
 	commandLine.BoolVar(&c.EnableMux, "mux", false, "Enable multiplex")
 	//tcp options
 	commandLine.DurationVar(&c.Timeout, "timeout", 5*time.Minute, "The idle timeout for connections")

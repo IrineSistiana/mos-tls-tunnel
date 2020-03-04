@@ -35,15 +35,19 @@ func main() {
 	c := new(core.MUServerConfig)
 
 	commandLine := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
-	commandLine.StringVar(&c.ServerAddr, "b", "", "[Host:Port] Server bind address, e.g. '127.0.0.1:1080'")
-	commandLine.StringVar(&c.HTTPControllerAddr, "c", "", "[Host:Port]  Controller address")
+
+	commandLine.StringVar(&c.ServerAddr, "b", "", "[Host:Port] or [Path](if bind-unix) Server bind address, e.g. '127.0.0.1:1080', '/run/mmt-server'")
+	commandLine.BoolVar(&c.ServerBindUnix, "bind-unix", false, "Bind on a Unix domain socket")
+	commandLine.StringVar(&c.HTTPControllerAddr, "c", "", "[Host:Port] Controller address")
 	commandLine.BoolVar(&c.EnableMux, "mux", false, "Enable multiplex")
 	commandLine.DurationVar(&c.Timeout, "timeout", time.Minute, "The idle timeout for connections")
 
-	cert := commandLine.String("cert", "", "[Path] X509KeyPair cert file")
-	key := commandLine.String("key", "", "[Path] X509KeyPair key file")
-	forceTLS := commandLine.Bool("force-tls", false, "automatically generates a certificate for listening on HTTPS")
+	commandLine.StringVar(&c.Cert, "cert", "", "[Path] X509KeyPair cert file")
+	commandLine.StringVar(&c.Key, "key", "", "[Path] X509KeyPair key file")
+	commandLine.BoolVar(&c.DisableTLS, "disable-tls", false, "disable TLS. An extra TLS proxy is required, such as Nginx SSL Stream Module")
+	commandLine.StringVar(&c.ServerName, "n", "", "Server name. Use to generate self signed certificate DNSName")
 
+	commandLine.BoolVar(&c.EnableTFO, "fast-open", false, "(Linux kernel 4.11+ only) Enable TCP fast open")
 	//debug only
 	commandLine.BoolVar(&c.Verbose, "verbose", false, "more log")
 
@@ -59,17 +63,7 @@ func main() {
 
 	//start server
 	go func() {
-		var do func() error
-		switch true {
-		case !*forceTLS && len(*key) == 0 && len(*cert) == 0:
-			do = server.StartHTTPServer
-		case *forceTLS:
-			do = func() error { return server.StartTLSServer(*key, *cert) }
-		default:
-			do = func() error { return server.StartTLSServer(*key, *cert) }
-		}
-
-		if err := do(); err != nil {
+		if err := server.StartServer(); err != nil {
 			logrus.Fatalf("server exited, %v", err)
 		} else {
 			logrus.Printf("server exited")

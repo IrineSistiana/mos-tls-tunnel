@@ -65,7 +65,7 @@ client ---> |mtt-client| ---> |mtt-server| ---> destination
 ### mtt-server
 
     -b string
-        [Host:Port] Bind address, e.g. '127.0.0.1:1080'
+        [Host:Port] or [Path](if bind-unix) Server bind address, e.g. '127.0.0.1:1080', '/run/mmt-server'
     -d string
         [Host:Port] Destination address
 
@@ -83,8 +83,12 @@ client ---> |mtt-client| ---> |mtt-server| ---> destination
 
 <details><summary><code>Geek options</code></summary><br>
 
+    -bind-unix 
+        Bind on a Unix domain socke
     -fast-open
         (Linux kernel 4.11+ only) Enable TCP fast open
+    -disable-tls
+        disable TLS. An extra TLS proxy is required, such as Nginx SSL Stream Module
     -n string
         Server name. Use to generate self signed certificate DNSName
 

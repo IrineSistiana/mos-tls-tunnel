@@ -21,12 +21,13 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
-	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -68,22 +69,15 @@ const (
 	ResErr = 2
 )
 
-//MUServerConfig multi-user server config
-type MUServerConfig struct {
-	ServerAddr         string
-	HTTPControllerAddr string
-
-	EnableMux bool
-	Timeout   time.Duration
-	Verbose   bool
-}
-
 //MUServer is a multi-user server
 type MUServer struct {
-	mux        *mux
-	server     http.Server
-	controller http.Server
-	logger     *logrus.Logger
+	conf *MUServerConfig
+
+	mux            *mux
+	server         http.Server
+	serverListener net.Listener
+	controller     http.Server
+	logger         *logrus.Logger
 }
 
 //NewMUServer init a multi-user server
@@ -103,31 +97,42 @@ func NewMUServer(conf *MUServerConfig) (*MUServer, error) {
 
 	mus.server = http.Server{Addr: conf.ServerAddr, Handler: mus.mux}
 	mus.controller = http.Server{Addr: conf.HTTPControllerAddr, Handler: mus}
+	mus.conf = conf
 
 	return mus, nil
 }
 
-//StartTLSServerWithoutCert starts server with self signed cert
-func (mus *MUServer) StartTLSServerWithoutCert() error {
-	tlsConf := new(tls.Config)
-	cers, err := generateCertificate("")
-	if err != nil {
-		return fmt.Errorf("generate certificate: %v", err)
+//StartServer starts the server
+func (mus *MUServer) StartServer() error {
+	var l net.Listener
+	var err error
+	if mus.conf.ServerBindUnix {
+		l, err = net.Listen("unix", mus.conf.ServerAddr)
+	} else {
+		listenConfig := net.ListenConfig{Control: getControlFunc(&tcpConfig{tfo: mus.conf.EnableTFO})}
+		l, err = listenConfig.Listen(context.Background(), "tcp", mus.conf.ServerAddr)
 	}
-	logrus.Print("WARNING: you are using a self-signed certificate")
-	tlsConf.Certificates = cers
-	mus.server.TLSConfig = tlsConf
-	return mus.server.ListenAndServeTLS("", "")
-}
+	if err != nil {
+		return fmt.Errorf("listener.Listen: %v", err)
+	}
+	defer l.Close()
 
-//StartTLSServer starts the server in tls mode
-func (mus *MUServer) StartTLSServer(certFile, keyFile string) error {
-	return mus.server.ListenAndServeTLS(certFile, keyFile)
-}
+	if mus.conf.DisableTLS {
+		return mus.server.Serve(l)
+	}
 
-//StartHTTPServer starts the server in http mode
-func (mus *MUServer) StartHTTPServer() error {
-	return mus.server.ListenAndServe()
+	// need to generate cert
+	if len(mus.conf.Cert) == 0 && len(mus.conf.Key) == 0 {
+		tlsConf := new(tls.Config)
+		cers, err := generateCertificate(mus.conf.ServerName)
+		if err != nil {
+			return fmt.Errorf("generate certificate: %v", err)
+		}
+		mus.logger.Print("WARNING: you are using a self-signed certificate")
+		tlsConf.Certificates = cers
+		mus.server.TLSConfig = tlsConf
+	}
+	return mus.server.ServeTLS(l, mus.conf.Cert, mus.conf.Key)
 }
 
 //StartController starts the controller of the server

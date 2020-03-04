@@ -95,7 +95,7 @@ func NewServer(c *ServerConfig) (*Server, error) {
 		if err != nil {
 			return nil, fmt.Errorf("generate certificate: %v", err)
 		}
-		logrus.Print("WARNING: you are using a self-signed certificate")
+		server.log.Print("WARNING: you are using a self-signed certificate")
 		server.tlsConf.Certificates = cers
 	} else {
 		cer, err := tls.LoadX509KeyPair(c.Cert, c.Key) //load cert
@@ -125,40 +125,53 @@ func NewServer(c *ServerConfig) (*Server, error) {
 }
 
 func (server *Server) Start() error {
-	listenConfig := net.ListenConfig{Control: getControlFunc(server.tcpConfig)}
-	listener, err := listenConfig.Listen(context.Background(), "tcp", server.conf.BindAddr)
-	if err != nil {
-		return fmt.Errorf("tls inner Listener: %v", err)
+	var l net.Listener
+	var err error
+	if server.conf.BindUnix {
+		l, err = net.Listen("unix", server.conf.BindAddr)
+	} else {
+		listenConfig := net.ListenConfig{Control: getControlFunc(server.tcpConfig)}
+		l, err = listenConfig.Listen(context.Background(), "tcp", server.conf.BindAddr)
 	}
+	if err != nil {
+		return fmt.Errorf("listener.Listen: %v", err)
+	}
+	if !server.conf.DisableTLS {
+		l = tls.NewListener(l, server.tlsConf)
+	}
+	defer l.Close()
 
 	server.listenerLocker.Lock()
-	server.listener = listener
+	server.listener = l
 	server.listenerLocker.Unlock()
-	server.log.Printf("plugin listen at %s", listener.Addr())
+	server.log.Printf("plugin listen at %s", l.Addr())
 
 	if server.conf.EnableWSS {
 		httpMux := http.NewServeMux()
 		httpMux.Handle(server.conf.WSSPath, server)
-		err = http.Serve(tls.NewListener(listener, server.tlsConf), httpMux)
+		err = http.Serve(server.listener, httpMux)
 		if err != nil {
-			return fmt.Errorf("ListenAndServe: %v", err)
+			return fmt.Errorf("http.Serve: %v", err)
 		}
 	} else {
 		for {
-			leftRawConn, err := listener.Accept()
+			leftConn, err := l.Accept()
 			if err != nil {
 				return fmt.Errorf("listener.Accept: %v", err)
 			}
 
 			go func() {
-				requestEntry := logrus.WithField("client", leftRawConn.RemoteAddr())
+				defer leftConn.Close()
+
+				requestEntry := logrus.WithField("client", leftConn.RemoteAddr())
 				requestEntry.Debug("connection accepted")
 
-				leftConn := tls.Server(leftRawConn, server.tlsConf)
-				defer leftConn.Close()
-				if err := leftConn.Handshake(); err != nil {
-					requestEntry.Errorf("tls handshake: %v", err)
-					return
+				// try handshake first, avoid later io err
+				if tlsConn, ok := leftConn.(*tls.Conn); ok {
+					if tlsConn.Handshake() != nil {
+						requestEntry.Errorf("tls handshake: %v", err)
+						return
+					}
 				}
 
 				if server.conf.EnableMux {

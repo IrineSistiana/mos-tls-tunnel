@@ -22,6 +22,7 @@ package core
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -53,51 +54,100 @@ func Test_MU(t *testing.T) {
 		Timeout:            time.Second * 30,
 		Verbose:            true,
 	}
-	server, err := NewMUServer(muServerTestConfig)
+	muServer, err := NewMUServer(muServerTestConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
 	wg.Add(1)
 	go func() {
-		fmt.Printf("server exited [%v]", server.StartTLSServerWithoutCert())
+		fmt.Printf("server exited [%v]", muServer.StartServer())
 		wg.Done()
 	}()
-	defer server.CloseServer()
+	defer muServer.CloseServer()
 
 	wg.Add(1)
 	go func() {
-		fmt.Printf("controller exited [%v]", server.StartController())
+		fmt.Printf("controller exited [%v]", muServer.StartController())
 		wg.Done()
 	}()
-	defer server.CloseController()
+	defer muServer.CloseController()
 
 	//wait server start
 	time.Sleep(500 * time.Millisecond)
 
-	//add path to server
-	path := "/qwertyu"
-	cmd := MUCmd{Opt: OptAdd, ArgsBunch: []Args{Args{Path: path, Dst: muDstAddr}}}
-	b, err := json.Marshal(cmd)
-	if err != nil {
-		t.Fatal(err)
+	sendCmd := func(opt int, path, dst string) (int, error) {
+		cmd := MUCmd{Opt: opt, ArgsBunch: []Args{Args{Path: path, Dst: dst}}}
+		b, err := json.Marshal(cmd)
+		if err != nil {
+			return 0, err
+		}
+
+		resp, err := http.Post("http://"+muControllrAddr, "", bytes.NewReader(b))
+		if err != nil {
+			return 0, err
+		}
+
+		resBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return 0, err
+		}
+		r := new(MURes)
+		err = json.Unmarshal(resBody, r)
+		if err != nil {
+			return 0, err
+		}
+		if r.Res != ResOK {
+			return 0, fmt.Errorf("add user failed, server faied with err [%s]", r.ErrString)
+		}
+		return r.CurrentUsers, nil
 	}
 
-	resp, err := http.Post("http://"+muControllrAddr, "", bytes.NewReader(b))
-	if err != nil {
-		t.Fatal(err)
+	testClient := func(c *ClientConfig) error {
+		wg := sync.WaitGroup{}
+
+		client, err := NewClient(c)
+		if err != nil {
+			return fmt.Errorf("NewClient: %v", err)
+		}
+		defer client.Close()
+		wg.Add(1)
+		go func() {
+			fmt.Printf("client exited [%v]", client.Start())
+			wg.Done()
+		}()
+
+		//open tunnel
+		localConn, err := net.Dial("tcp", muClientBindAddr)
+		if err != nil {
+			return fmt.Errorf("connecting to client: %v", err)
+		}
+		defer localConn.Close()
+
+		//test send
+		localConn.SetWriteDeadline(time.Now().Add(time.Second))
+		if _, err := localConn.Write(data); err != nil {
+			return fmt.Errorf("write to client: %v", err)
+		}
+
+		//test read
+		buf := make([]byte, dataSize)
+		_, err = localConn.Read(buf)
+		if err != nil {
+			return fmt.Errorf("read from client: %v", err)
+		}
+		if !bytes.Equal(buf, data) {
+			t.Fatal("data err")
+		}
+
+		client.Close()
+		wg.Wait()
+		return nil
 	}
 
-	resBody, err := ioutil.ReadAll(resp.Body)
+	//add first user
+	_, err = sendCmd(OptAdd, "/qwertyu", muDstAddr)
 	if err != nil {
 		t.Fatal(err)
-	}
-	r := new(MURes)
-	err = json.Unmarshal(resBody, r)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if r.Res != ResOK {
-		t.Fatal("add failed")
 	}
 
 	//start client
@@ -105,48 +155,41 @@ func Test_MU(t *testing.T) {
 		BindAddr:           muClientBindAddr,
 		RemoteAddr:         muServerBindAddr,
 		EnableWSS:          true,
-		WSSPath:            path,
+		WSSPath:            "/qwertyu",
 		Timeout:            time.Second * 30,
 		InsecureSkipVerify: true,
 		MuxMaxStream:       4,
-		Verbose:            true}
-	client, err := NewClient(cc)
+		Verbose:            false,
+	}
+
+	//test tunnel
+	err = testClient(cc)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
-	wg.Add(1)
-	go func() {
-		fmt.Printf("client exited [%v]", client.Start())
-		wg.Done()
-	}()
 
-	//open tunnel
-	localConn, err := net.Dial("tcp", muClientBindAddr)
+	//test ping
+	n, err := sendCmd(OptPing, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer localConn.Close()
-
-	//test send
-	localConn.SetWriteDeadline(time.Now().Add(time.Second))
-	if _, err := localConn.Write(data); err != nil {
-		t.Fatal(err)
+	if n != 1 {
+		t.Fatal(errors.New("test ping failed"))
 	}
 
-	//test read
-	buf := make([]byte, dataSize)
-	_, err = localConn.Read(buf)
+	//del first user
+	_, err = sendCmd(OptDel, "/qwertyu", muDstAddr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(buf, data) {
-		t.Fatal("data err")
+
+	err = testClient(cc)
+	if err == nil {
+		t.Fatal(errors.New("err is expected"))
 	}
 
 	// force to close so wg can be released
-	client.Close()
-	server.CloseController()
-	server.CloseServer()
+	muServer.CloseController()
+	muServer.CloseServer()
 	wg.Wait()
 }

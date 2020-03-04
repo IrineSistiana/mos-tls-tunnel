@@ -46,32 +46,58 @@ func defaultSmuxConfig() *smux.Config {
 
 //ClientConfig is a config
 type ClientConfig struct {
-	BindAddr           string
-	RemoteAddr         string
-	EnableWSS          bool
-	WSSPath            string
+	BindAddr   string
+	RemoteAddr string
+
+	EnableWSS    bool
+	WSSPath      string
+	EnableMux    bool
+	MuxMaxStream int
+
 	ServerName         string
 	InsecureSkipVerify bool
-	EnableMux          bool
-	MuxMaxStream       int
-	Timeout            time.Duration
-	EnableTFO          bool
-	VpnMode            bool
-	FallbackDNS        string
-	Verbose            bool
+
+	Timeout     time.Duration
+	EnableTFO   bool
+	VpnMode     bool
+	FallbackDNS string
+	Verbose     bool
 }
 
 //ServerConfig is a config
 type ServerConfig struct {
-	BindAddr   string
-	DstAddr    string
+	BindAddr string
+	BindUnix bool
+	DstAddr  string
+
+	EnableWSS bool
+	WSSPath   string
+	EnableMux bool
+
 	Key        string
 	Cert       string
-	EnableWSS  bool
-	WSSPath    string
 	ServerName string
-	EnableMux  bool
-	Timeout    time.Duration
-	EnableTFO  bool
-	Verbose    bool
+	DisableTLS bool
+
+	Timeout   time.Duration
+	EnableTFO bool
+	Verbose   bool
+}
+
+//MUServerConfig multi-user server config
+type MUServerConfig struct {
+	ServerAddr         string
+	ServerBindUnix     bool
+	HTTPControllerAddr string
+
+	Key        string
+	Cert       string
+	ServerName string
+	DisableTLS bool
+
+	EnableMux bool
+
+	EnableTFO bool
+	Timeout   time.Duration
+	Verbose   bool
 }

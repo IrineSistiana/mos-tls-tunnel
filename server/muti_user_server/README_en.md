@@ -12,38 +12,47 @@ Each user has their own unique `path` and `dst`.
 
 Use HTTP's POST method to send commands to the Controller to add or delete users.
 
-## Command Line
+## Usage
 
-    -b string
-        [Host:Port] Server address, e.g. '127.0.0.1:1080'
     -c string
         [Host:Port]  Controller address
 
-    -mux
-        Enable multiplex
+    // For the following command descriptions, please refer to mtt-server
 
-    // If no certificate (cert and key) is provided and there is no force-tls, 
-    // mtt will listen on HTTP instead of HTTPS.
-    // An extra HTTPS reverse proxy is required for clients to connect. 
-    // Because the client only supports HTTPS
+    -mux
 
     -cert string
-        [Path] X509KeyPair cert file
     -key string
-        [Path] X509KeyPair key file
-    -force-tls
-        automatically generates a certificate for listening on HTTPS
-
-    -timeout duration
-        The idle timeout for connections (default 1m0s)
+    -disable-tls 
+    -n string
+        
+    -fast-open
+    -timeout duration  
     -verbose
-        more log
 
 ## API
 
 The Controller accepts HTTP POST requests. The body of a single request cannot be greater than 2M.
 
 **Controller json command format example:**
+
+Command structure:
+
+    {
+        "opt": 0,
+        "args_bunch": [
+            {
+                "path": "",
+                "dst": ""
+            },
+            {
+                "path": "",
+                "dst": ""
+            }
+            ...
+        ]
+    }
+
 
 <details><summary><code>Add user</code></summary><br>
 
@@ -107,6 +116,14 @@ Changing or deleting a user does not affect the user's established connection.
 `args_bunch` can contain multiple `path` and `dst` pairs, but the body of a single request cannot be greater than 2M.
 
 **Controller json response example:**
+
+Response structure:
+
+    {
+        "res": 0,
+        "err_string":"",
+        "current_users": 0
+    }
 
 <details><summary><code>OK</code></summary><br>
 

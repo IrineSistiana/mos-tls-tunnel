@@ -35,7 +35,11 @@ func getControlFunc(conf *tcpConfig) func(network, address string, c syscall.Raw
 				return err
 			}
 		}
-		return c.Control(conf.setSockOpt)
+		if conf != nil {
+			return c.Control(conf.setSockOpt)
+		} else {
+			return nil
+		}
 	}
 }
 

@@ -28,6 +28,9 @@ import (
 
 //TCP_MAXSEG TCP_NODELAY SO_SND/RCVBUF etc..
 func (c *tcpConfig) setSockOpt(uintFd uintptr) {
+	if c == nil {
+		return
+	}
 	fd := int(uintFd)
 
 	if c.tfo {

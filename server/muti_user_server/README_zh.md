@@ -14,36 +14,44 @@ mtt-mu-server可让多个用户使用mtt-client的`wss`模式传输数据至一�
 
 ## 命令行
 
-    -b string
-        [Host:Port] 服务器的监听地址
     -c string
         [Host:Port] Controller的监听地址
 
-    -mux
-        启用 multiplex
+    // 以下命令说明请参考 mtt-server 说明
 
-    //如果不提供证书(cert和key)并且没有force-tls，
-    //mtt将监听HTTP而非HTTPS。
-    //需要格外的HTTPS反向代理才能使客户端连接。
-    //因为客户端只支持HTTPS
+    -mux
 
     -cert string
-        [Path] X509KeyPair cert file
     -key string
-        [Path] X509KeyPair key file
-    -force-tls
-        自动生成一个证书并强制监听HTTPS 
-
-    -timeout duration
-        超时 (default 1m0s)
+    -disable-tls 
+    -n string
+        
+    -fast-open
+    -timeout duration  
     -verbose
-        更多Debug log 
 
 ## API
 
 Controller 接受 HTTP POST 请求。单次请求的Body不能大于2M。
 
 **Controller json命令格式示例：**
+
+命令结构：
+
+    {
+        "opt": 0,
+        "args_bunch": [
+            {
+                "path": "",
+                "dst": ""
+            },
+            {
+                "path": "",
+                "dst": ""
+            }
+            ...
+        ]
+    }
 
 <details><summary><code>Add user</code></summary><br>
 
@@ -107,6 +115,14 @@ Controller 接受 HTTP POST 请求。单次请求的Body不能大于2M。
 `args_bunch`中可包含多个`path`和`dst`对，但单次请求的Body不能大于2M。
 
 **Controller json回复示例：**
+
+回复结构：
+
+    {
+        "res": 0,
+        "err_string":"",
+        "current_users": 0
+    }
 
 <details><summary><code>OK</code></summary><br>
 

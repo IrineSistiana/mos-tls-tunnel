@@ -24,7 +24,11 @@ package core
 import "syscall"
 
 func getControlFunc(conf *tcpConfig) func(network, address string, c syscall.RawConn) error {
-	return func(network, address string, c syscall.RawConn) error {
-		return c.Control(conf.setSockOpt)
+	if conf != nil {
+		return func(network, address string, c syscall.RawConn) error {
+			return c.Control(conf.setSockOpt)
+		}
 	}
+
+	return nil
 }
