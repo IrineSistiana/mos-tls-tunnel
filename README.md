@@ -17,6 +17,7 @@ mos-tls-tunnel is a command line based utility that open a tls tunnel between tw
     - [Recommended Shadowsocks server and client](#recommended-shadowsocks-server-and-client)
     - [Android plugin](#android-plugin)
   - [mtt-server Multi-user Version (mtt-mu-server)](#mtt-server-multi-user-version-mtt-mu-server)
+  - [Build from Source](#build-from-source)
   - [Open Source Components / Libraries](#open-source-components--libraries)
 
 ## Usage
@@ -163,6 +164,25 @@ API is very simple: Use HTTP's POST method to send commands to the Controller to
 
 For more, see [here](server/muti_user_server/).
 
+## Build from Source
+
+In general, you need the following build dependencies:
+
+* golang-go 
+* git
+
+You might build mos-tls-tunnel like this:
+
+    # get source
+    go get -d -u github.com/IrineSistiana/mos-tls-tunnel/mtt-client
+    go get -d -u github.com/IrineSistiana/mos-tls-tunnel/mtt-server
+    go get -d -u github.com/IrineSistiana/mos-tls-tunnel/mtt-mu-server
+
+    # start building
+    go build -o ./ github.com/IrineSistiana/mos-tls-tunnel/mtt-client
+    go build -o ./ github.com/IrineSistiana/mos-tls-tunnel/mtt-server
+    go build -o ./ github.com/IrineSistiana/mos-tls-tunnel/mtt-mu-server
+    
 ## Open Source Components / Libraries
 
 * [gorilla/websocket](https://github.com/gorilla/websocket): [BSD-2-Clause](https://github.com/gorilla/websocket/blob/master/LICENSE)
