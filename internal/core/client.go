@@ -180,29 +180,39 @@ func (client *Client) Start() error {
 		}
 
 		go func() {
-			client.log.Debugf("leftConn from %s accepted", leftConn.RemoteAddr())
-			defer leftConn.Close()
-			var rightConn net.Conn
-			var err error
-
-			if client.conf.EnableMux {
-				rightConn, err = client.getSmuxStream()
-				if err != nil {
-					client.log.Errorf("mux getStream: %v", err)
-					return
-				}
-			} else {
-				rightConn, err = client.newServerConn()
-				if err != nil {
-					client.log.Errorf("connect to remote: %v", err)
-					return
-				}
+			client.log.Debugf("client connection from %s accepted", leftConn.RemoteAddr())
+			err := client.ForwardConn(leftConn)
+			if err != nil {
+				client.log.Errorf("forward client connection from %s: %v", leftConn.RemoteAddr(), err)
 			}
-			defer rightConn.Close()
-
-			openTunnel(leftConn, rightConn, client.conf.Timeout)
 		}()
 	}
+}
+
+//ForwardConn forwards this connection to server.
+//It will block until server-side connection is closed
+func (client *Client) ForwardConn(c net.Conn) error {
+	var rightConn net.Conn
+	var err error
+
+	if client.conf.EnableMux {
+		rightConn, err = client.getMuxStream()
+		if err != nil {
+			return fmt.Errorf("mux getStream: %v", err)
+		}
+	} else {
+		rightConn, err = client.newServerConn()
+		if err != nil {
+			return fmt.Errorf("connect to remote: %v", err)
+		}
+	}
+	defer rightConn.Close()
+
+	err = openTunnel(c, rightConn, client.conf.Timeout)
+	if err != nil {
+		return fmt.Errorf("openTunnel: %v", err)
+	}
+	return nil
 }
 
 //Close shutdown client
@@ -253,60 +263,33 @@ func (client *Client) dialNewSmuxSess() (*smux.Session, error) {
 		return nil, err
 	}
 
-	// this go routine closes sess if it has been idle for a long time
-	go func() {
-		ticker := time.NewTicker(muxCheckIdleInterval)
-		defer ticker.Stop()
-		lastBusy := time.Now()
-		for {
-			if sess.IsClosed() {
-				return
-			}
-
-			select {
-			case now := <-ticker.C:
-				if sess.NumStreams() > 0 {
-					lastBusy = now
-					continue
-				}
-
-				if now.Sub(lastBusy) > muxSessIdleTimeout {
-					sess.Close()
-					client.smuxSessPool.Delete(sess)
-					client.log.Debugf("sess %p closed and deleted, idle timeout", sess)
-					return
-				}
-			}
-		}
-	}()
-
 	client.log.Debugf("new sess %p opend", sess)
 	return sess, nil
 }
 
-func (client *Client) getSmuxStream() (*smux.Stream, error) {
-	var stream *smux.Stream
+func (client *Client) getMuxStream() (*muxStream, error) {
+	var stream *muxStream
 
 	try := func(key, value interface{}) bool {
-		sess := key.(*smux.Session)
+		sess := key.(*muxSession)
 		if sess.IsClosed() {
 			client.smuxSessPool.Delete(sess)
 			client.log.Debugf("deleted closed sess %p", sess)
 			return true
 		}
 
-		if sess.NumStreams() < client.conf.MuxMaxStream {
-			// try
-			var er error
-			stream, er = sess.OpenStream()
-			if er != nil {
-				client.smuxSessPool.Delete(sess)
-				client.log.Warnf("deleted err sess %p: open stream: %v", sess, er)
-				return true
-			}
-			return false
+		// try
+		var er error
+		stream, er = sess.openStream(client.conf.MuxMaxStream)
+		if er == ErrTooManyStreams {
+			return true // this session opened too many streams, try next
 		}
-		return true
+		if er != nil {
+			client.smuxSessPool.Delete(sess)
+			client.log.Warnf("deleted err sess %p: open stream: %v", sess, er)
+			return true
+		}
+		return false
 	}
 
 	client.smuxSessPool.Range(try)
@@ -316,8 +299,9 @@ func (client *Client) getSmuxStream() (*smux.Stream, error) {
 		if err != nil {
 			return nil, err
 		}
-		client.smuxSessPool.Store(sess, nil)
-		return sess.OpenStream()
+		muxSess := newMuxSession(sess)
+		client.smuxSessPool.Store(muxSess, nil)
+		return muxSess.openStream(client.conf.MuxMaxStream)
 	}
 	return stream, nil
 }

@@ -168,7 +168,7 @@ func (server *Server) Start() error {
 
 				// try handshake first, avoid later io err
 				if tlsConn, ok := leftConn.(*tls.Conn); ok {
-					if tlsConn.Handshake() != nil {
+					if err := tlsConn.Handshake(); err != nil {
 						requestEntry.Errorf("tls handshake: %v", err)
 						return
 					}
@@ -200,6 +200,7 @@ func (server *Server) handleClientConn(leftConn net.Conn, requestEntry *logrus.E
 	rightConn, err := server.dialDst()
 	if err != nil {
 		requestEntry.Errorf("dial dst, %v", err)
+		return
 	}
 	defer rightConn.Close()
 

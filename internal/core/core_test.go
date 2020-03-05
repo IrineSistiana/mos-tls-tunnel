@@ -23,7 +23,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"sync"
@@ -36,8 +36,6 @@ const (
 )
 
 var (
-	data = make([]byte, dataSize)
-
 	clientBindAddr   = "127.0.0.1:50000"
 	serverBindAddr   = "127.0.0.1:50001"
 	dstAddr          = "127.0.0.1:50002"
@@ -54,8 +52,7 @@ var (
 )
 
 type dstServer struct {
-	buf [1024 * 1024]byte
-	l   net.Listener
+	l net.Listener
 }
 
 func runDstServer(addr string, echo bool) (*dstServer, error) {
@@ -71,25 +68,29 @@ func runDstServer(addr string, echo bool) (*dstServer, error) {
 		for {
 			conn, err := l.Accept()
 			if err != nil {
-				log.Print(err)
+				log.Printf("dummy dst server Accept, %v", err)
 				return
 			}
 			go func() {
+				defer conn.Close()
+				buf := acquireIOBuf()
+				defer releaseIOBuf(buf)
 				for {
-					i, err := conn.Read(e.buf[:])
+					i, err := conn.Read(buf)
 					if err != nil {
-						log.Print(err)
+						if err != io.EOF {
+							log.Printf("dummy dst server Read, %v", err)
+						}
 						return
 					}
 					if echo {
-						_, err = conn.Write(e.buf[:i])
+						_, err = conn.Write(buf[:i])
 						if err != nil {
-							log.Print(err)
+							log.Printf("dummy dst server echo Write, %v", err)
 							return
 						}
-					} else {
-						ioutil.Discard.Write(e.buf[:i])
 					}
+					// discard
 				}
 			}()
 
@@ -134,25 +135,44 @@ func test(sc *ServerConfig, cc *ClientConfig, t *testing.T) {
 	}()
 	defer server.Close()
 
+	// wait server and client
 	time.Sleep(500 * time.Millisecond)
 
-	localConn, err := net.Dial("tcp", clientBindAddr)
+	garbageSize := 16
+	garbage := make([]byte, garbageSize)
+	_, err = rand.Read(garbage)
 	if err != nil {
-		t.Fatal(err)
-	}
-	defer localConn.Close()
-	localConn.SetWriteDeadline(time.Now().Add(time.Second))
-	if _, err := localConn.Write(data); err != nil {
 		t.Fatal(err)
 	}
 
-	buf := make([]byte, dataSize)
-	_, err = localConn.Read(buf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(buf, data) {
-		t.Fatal("data err")
+	// 5 clients, 50 connections per client
+	for g := 0; g < 5; g++ {
+		wgLocalConn := sync.WaitGroup{}
+		for i := 0; i < 50; i++ {
+			wgLocalConn.Add(1)
+			go func() {
+				defer wgLocalConn.Done()
+				localConn, err := net.Dial("tcp", clientBindAddr)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer localConn.Close()
+				localConn.SetDeadline(time.Now().Add(time.Second * 30))
+				if _, err := localConn.Write(garbage); err != nil {
+					t.Fatal(err)
+				}
+
+				buf := make([]byte, garbageSize)
+				_, err = localConn.Read(buf)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !bytes.Equal(buf, garbage) {
+					t.Fatal("data err")
+				}
+			}()
+		}
+		wgLocalConn.Wait()
 	}
 
 	// force to close so wg can be released

@@ -23,7 +23,10 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	"github.com/gorilla/websocket"
 
 	"github.com/sirupsen/logrus"
 	"github.com/xtaci/smux"
@@ -33,17 +36,62 @@ var ioCopybuffPool = &sync.Pool{New: func() interface{} {
 	return make([]byte, defaultCopyIOBufferSize)
 }}
 
-func openTunnel(a, b net.Conn, timeout time.Duration) {
-	go openOneWayTunnel(a, b, timeout)
-	openOneWayTunnel(b, a, timeout)
+func acquireIOBuf() []byte {
+	return ioCopybuffPool.Get().([]byte)
 }
 
-func openOneWayTunnel(dst, src net.Conn, timeout time.Duration) {
-	buf := ioCopybuffPool.Get().([]byte)
-	copyBuffer(dst, src, buf, timeout)
+func releaseIOBuf(b []byte) {
+	ioCopybuffPool.Put(b)
+}
+
+type firstErr struct {
+	reportrOnce sync.Once
+	err         atomic.Value
+}
+
+func (fe *firstErr) report(err error) {
+	fe.reportrOnce.Do(func() {
+		// atomic.Value can't store nil value
+		if err != nil {
+			fe.err.Store(err)
+		}
+	})
+}
+
+func (fe *firstErr) getErr() error {
+	v := fe.err.Load()
+	if err, ok := v.(error); ok {
+		return err
+	}
+	return nil
+}
+
+// openTunnel opens a tunnel between a and b, if any end
+// reports an error during io.Copy, openTunnel will close
+// both of them.
+func openTunnel(a, b net.Conn, timeout time.Duration) error {
+	fe := firstErr{}
+
+	go openOneWayTunnel(a, b, timeout, &fe)
+	openOneWayTunnel(b, a, timeout, &fe)
+
+	return fe.getErr()
+}
+
+// don not use this func, use openTunnel instead
+func openOneWayTunnel(dst, src net.Conn, timeout time.Duration, fe *firstErr) {
+	buf := acquireIOBuf()
+	_, err := copyBuffer(dst, src, buf, timeout)
+
+	// a nil err is io.EOF err, which is surpressed by copyBuffer.
+	// report a nil err means one conn was closed by peer.
+	fe.report(err)
+
+	//let another goroutine break from copy loop
 	dst.Close()
 	src.Close()
-	ioCopybuffPool.Put(buf)
+
+	releaseIOBuf(buf)
 }
 
 func copyBuffer(dst net.Conn, src net.Conn, buf []byte, timeout time.Duration) (written int64, err error) {
@@ -92,6 +140,15 @@ func handleClientMuxConn(smuxConfig *smux.Config, maxStream int, conn net.Conn, 
 		}
 		stream, err := sess.AcceptStream()
 		if err != nil {
+			// surpress expected err
+			if e, ok := err.(*websocket.CloseError); ok && e.Code == websocket.CloseNormalClosure {
+				return
+			}
+			if err == io.EOF {
+				return
+			}
+
+			// warn unexpected err
 			requestEntry.Warnf("accept smux stream, %v", err)
 			return
 		}

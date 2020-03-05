@@ -21,6 +21,7 @@ package core
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -124,18 +125,25 @@ func Test_MU(t *testing.T) {
 		defer localConn.Close()
 
 		//test send
+		garbageSize := 4096
+		garbage := make([]byte, garbageSize)
+		_, err = rand.Read(garbage)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		localConn.SetWriteDeadline(time.Now().Add(time.Second))
-		if _, err := localConn.Write(data); err != nil {
+		if _, err := localConn.Write(garbage); err != nil {
 			return fmt.Errorf("write to client: %v", err)
 		}
 
 		//test read
-		buf := make([]byte, dataSize)
+		buf := make([]byte, garbageSize)
 		_, err = localConn.Read(buf)
 		if err != nil {
 			return fmt.Errorf("read from client: %v", err)
 		}
-		if !bytes.Equal(buf, data) {
+		if !bytes.Equal(buf, garbage) {
 			t.Fatal("data err")
 		}
 
