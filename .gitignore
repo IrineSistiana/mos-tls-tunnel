@@ -13,6 +13,7 @@
 
 # build.py
 build*.py
+release/
 
 # vscode dir
 .vscode/

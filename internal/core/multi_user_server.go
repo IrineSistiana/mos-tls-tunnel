@@ -107,7 +107,7 @@ func (mus *MUServer) StartServer() error {
 	var l net.Listener
 	var err error
 	if mus.conf.ServerBindUnix {
-		l, err = net.Listen("unix", mus.conf.ServerAddr)
+		l, err = listenUnix(mus.conf.ServerAddr)
 	} else {
 		listenConfig := net.ListenConfig{Control: getControlFunc(&tcpConfig{tfo: mus.conf.EnableTFO})}
 		l, err = listenConfig.Listen(context.Background(), "tcp", mus.conf.ServerAddr)

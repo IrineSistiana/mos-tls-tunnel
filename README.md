@@ -162,7 +162,7 @@ This can increase the concealment and security of the server. Because we no long
 
 API is very simple: Use HTTP's POST method to send commands to the Controller to add or delete as many users as you want.
 
-For more, see [here](server/muti_user_server/).
+For more, see [here](cmd/mtt-mu-server).
 
 ## Build from Source
 
@@ -174,14 +174,14 @@ In general, you need the following build dependencies:
 You might build mos-tls-tunnel like this:
 
     # get source
-    go get -d -u github.com/IrineSistiana/mos-tls-tunnel/mtt-client
-    go get -d -u github.com/IrineSistiana/mos-tls-tunnel/mtt-server
-    go get -d -u github.com/IrineSistiana/mos-tls-tunnel/mtt-mu-server
+    go get -d -u github.com/IrineSistiana/mos-tls-tunnel/cmd/mtt-client
+    go get -d -u github.com/IrineSistiana/mos-tls-tunnel/cmd/mtt-server
+    go get -d -u github.com/IrineSistiana/mos-tls-tunnel/cmd/mtt-mu-server
 
     # start building
-    go build -o ./ github.com/IrineSistiana/mos-tls-tunnel/mtt-client
-    go build -o ./ github.com/IrineSistiana/mos-tls-tunnel/mtt-server
-    go build -o ./ github.com/IrineSistiana/mos-tls-tunnel/mtt-mu-server
+    go build -o ./ github.com/IrineSistiana/mos-tls-tunnel/cmd/mtt-client
+    go build -o ./ github.com/IrineSistiana/mos-tls-tunnel/cmd/mtt-server
+    go build -o ./ github.com/IrineSistiana/mos-tls-tunnel/cmd/mtt-mu-server
     
 ## Open Source Components / Libraries
 

@@ -22,6 +22,8 @@ package core
 import (
 	"io"
 	"net"
+	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -161,4 +163,14 @@ func handleClientMuxConn(smuxConfig *smux.Config, maxStream int, conn net.Conn, 
 
 		go handleStream(stream, requestEntry)
 	}
+}
+
+// listenUnix will try to remove socket path before Listen
+func listenUnix(addr string) (net.Listener, error) {
+	if strings.HasPrefix(addr, "@") {
+		return net.Listen("unix", addr)
+	}
+
+	os.RemoveAll(addr)
+	return net.Listen("unix", addr)
 }

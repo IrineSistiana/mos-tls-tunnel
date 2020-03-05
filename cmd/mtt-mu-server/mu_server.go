@@ -70,6 +70,7 @@ func main() {
 			os.Exit(0)
 		}
 	}()
+	defer server.CloseServer()
 
 	//start control
 	go func() {
@@ -80,11 +81,11 @@ func main() {
 			os.Exit(0)
 		}
 	}()
+	defer server.CloseController()
 
 	//wait signals
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, os.Kill, syscall.SIGTERM)
 	s := <-osSignals
 	logrus.Printf("exiting: signal: %v", s)
-	os.Exit(0)
 }

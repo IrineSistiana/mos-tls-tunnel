@@ -92,11 +92,11 @@ func main() {
 			os.Exit(0)
 		}
 	}()
+	defer server.Close()
 
 	//wait signals
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, os.Kill, syscall.SIGTERM)
 	s := <-osSignals
 	logrus.Printf("exiting: signal: %v", s)
-	os.Exit(0)
 }

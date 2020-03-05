@@ -89,20 +89,22 @@ func NewServer(c *ServerConfig) (*Server, error) {
 
 	//config
 	server.tcpConfig = &tcpConfig{tfo: c.EnableTFO}
-	server.tlsConf = new(tls.Config)
-	if len(c.Cert) == 0 && len(c.Key) == 0 { //self signed cert
-		cers, err := generateCertificate(server.conf.ServerName)
-		if err != nil {
-			return nil, fmt.Errorf("generate certificate: %v", err)
+	if server.conf.DisableTLS == false {
+		server.tlsConf = new(tls.Config)
+		if len(c.Cert) == 0 && len(c.Key) == 0 { //self signed cert
+			cers, err := generateCertificate(server.conf.ServerName)
+			if err != nil {
+				return nil, fmt.Errorf("generate certificate: %v", err)
+			}
+			server.log.Print("WARNING: you are using a self-signed certificate")
+			server.tlsConf.Certificates = cers
+		} else {
+			cer, err := tls.LoadX509KeyPair(c.Cert, c.Key) //load cert
+			if err != nil {
+				return nil, fmt.Errorf("failed to load key and cert, %v", err)
+			}
+			server.tlsConf.Certificates = []tls.Certificate{cer}
 		}
-		server.log.Print("WARNING: you are using a self-signed certificate")
-		server.tlsConf.Certificates = cers
-	} else {
-		cer, err := tls.LoadX509KeyPair(c.Cert, c.Key) //load cert
-		if err != nil {
-			return nil, fmt.Errorf("failed to load key and cert, %v", err)
-		}
-		server.tlsConf.Certificates = []tls.Certificate{cer}
 	}
 
 	//net dialer
@@ -128,7 +130,7 @@ func (server *Server) Start() error {
 	var l net.Listener
 	var err error
 	if server.conf.BindUnix {
-		l, err = net.Listen("unix", server.conf.BindAddr)
+		l, err = listenUnix(server.conf.BindAddr)
 	} else {
 		listenConfig := net.ListenConfig{Control: getControlFunc(server.tcpConfig)}
 		l, err = listenConfig.Listen(context.Background(), "tcp", server.conf.BindAddr)
