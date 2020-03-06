@@ -55,11 +55,15 @@ type dstServer struct {
 	l net.Listener
 }
 
-func runDstServer(addr string, echo bool) (*dstServer, error) {
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, err
+func runDstServer(addr string, l net.Listener, echo bool) (*dstServer, error) {
+	if l == nil {
+		var err error
+		l, err = net.Listen("tcp", addr)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	e := &dstServer{
 		l: l,
 	}
@@ -105,7 +109,10 @@ func (e *dstServer) close() error {
 }
 
 func test(sc *ServerConfig, cc *ClientConfig, t *testing.T) {
-	echo, err := runDstServer(dstAddr, true)
+	dummyConnL2C := newDummyDialerListener()
+	dummyConnS2D := newDummyDialerListener()
+
+	echo, err := runDstServer("", dummyConnS2D, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,20 +124,23 @@ func test(sc *ServerConfig, cc *ClientConfig, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
-	wg.Add(1)
-	go func() {
-		fmt.Printf("client exited [%v]", client.Start())
-		wg.Done()
-	}()
+	client.testDialServerRaw = dummyConnL2C.connect
+
+	// wg.Add(1)
+	// go func() {
+	// 	fmt.Printf("client exited [%v]", client.Start())
+	// 	wg.Done()
+	// }()
+	// defer client.Close()
 
 	server, err := NewServer(serverTestConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
+	server.testDialDst = dummyConnS2D.connect
 	wg.Add(1)
 	go func() {
-		fmt.Printf("server exited [%v]", server.Start())
+		fmt.Printf("server exited [%v]", server.ActiveAndServe(dummyConnL2C))
 		wg.Done()
 	}()
 	defer server.Close()
@@ -145,19 +155,24 @@ func test(sc *ServerConfig, cc *ClientConfig, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 5 clients, 50 connections per client
-	for g := 0; g < 5; g++ {
-		wgLocalConn := sync.WaitGroup{}
-		for i := 0; i < 50; i++ {
-			wgLocalConn.Add(1)
+	for g := 0; g < 1; g++ {
+		wgClient := sync.WaitGroup{}
+		for i := 0; i < 1; i++ {
+			wgClient.Add(1)
 			go func() {
-				defer wgLocalConn.Done()
-				localConn, err := net.Dial("tcp", clientBindAddr)
-				if err != nil {
-					t.Fatal(err)
-				}
+				defer wgClient.Done()
+				localConn, clientConn := net.Pipe()
 				defer localConn.Close()
-				localConn.SetDeadline(time.Now().Add(time.Second * 30))
+				defer clientConn.Close()
+				wgClient.Add(1)
+				go func() {
+					defer wgClient.Done()
+					err := client.ForwardConn(clientConn)
+					if err != nil {
+						t.Log(err)
+					}
+				}()
+				localConn.SetDeadline(time.Now().Add(time.Second * 10))
 				if _, err := localConn.Write(garbage); err != nil {
 					t.Fatal(err)
 				}
@@ -172,7 +187,7 @@ func test(sc *ServerConfig, cc *ClientConfig, t *testing.T) {
 				}
 			}()
 		}
-		wgLocalConn.Wait()
+		wgClient.Wait()
 	}
 
 	// force to close so wg can be released
@@ -182,6 +197,14 @@ func test(sc *ServerConfig, cc *ClientConfig, t *testing.T) {
 }
 
 func Test_plain(t *testing.T) {
+	test(serverTestConfig, clientTestConfig, t)
+}
+
+func Test_mux(t *testing.T) {
+	serverTestConfig.EnableWSS = false
+	clientTestConfig.EnableWSS = false
+	serverTestConfig.EnableMux = true
+	clientTestConfig.EnableMux = true
 	test(serverTestConfig, clientTestConfig, t)
 }
 
@@ -218,7 +241,10 @@ func Test_wss_auto_mux(t *testing.T) {
 
 func bench(sc *ServerConfig, cc *ClientConfig, b *testing.B) (conn net.Conn) {
 
-	echo, err := runDstServer(dstAddr, false)
+	dummyConnL2C := newDummyDialerListener()
+	dummyConnS2D := newDummyDialerListener()
+
+	echo, err := runDstServer("", dummyConnS2D, false)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -230,31 +256,33 @@ func bench(sc *ServerConfig, cc *ClientConfig, b *testing.B) (conn net.Conn) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer client.Close()
-	wg.Add(1)
-	go func() {
-		fmt.Printf("client exited [%v]", client.Start())
-		wg.Done()
-	}()
+	client.testDialServerRaw = dummyConnL2C.connect
 
+	// server
 	server, err := NewServer(serverTestConfig)
 	if err != nil {
 		b.Fatal(err)
 	}
+	server.testDialDst = dummyConnS2D.connect
 	wg.Add(1)
 	go func() {
-		fmt.Printf("server exited [%v]", server.Start())
+		fmt.Printf("server exited [%v]", server.ActiveAndServe(dummyConnL2C))
 		wg.Done()
 	}()
 	defer server.Close()
 
+	// wait server and client
 	time.Sleep(500 * time.Millisecond)
 
-	localConn, err := net.Dial("tcp", clientBindAddr)
-	if err != nil {
-		b.Fatal(err)
-	}
+	localConn, clientConn := net.Pipe()
 	defer localConn.Close()
+	defer clientConn.Close()
+	go func() {
+		err := client.ForwardConn(clientConn)
+		if err != nil {
+			log.Printf("client forward: %v", err)
+		}
+	}()
 
 	garbage := make([]byte, 64*1024)
 	_, err = rand.Read(garbage)
@@ -265,12 +293,16 @@ func bench(sc *ServerConfig, cc *ClientConfig, b *testing.B) (conn net.Conn) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	t := time.Now()
+	c := 0
 	for i := 0; i < b.N; i++ {
-		localConn.Write(garbage)
+		n, err := localConn.Write(garbage)
+		if err != nil {
+			b.Fatalf("write data @ %d %.2f%%, %v", c, float64(c)/float64(b.N*64*1024), err)
+		}
+		c = c + n
 	}
 	b.StopTimer()
-
-	b.Logf("[%f kb/s]", float64(b.N*64)/time.Since(t).Seconds())
+	b.Logf("[%dM %.2f Mb/s]", c/1024/1024, float64(c/1024/1024)/time.Since(t).Seconds())
 
 	// force to close so wg can be released
 	client.Close()

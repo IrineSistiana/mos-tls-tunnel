@@ -60,6 +60,9 @@ type Server struct {
 	smuxConfig *smux.Config
 
 	log *logrus.Logger
+
+	//test only
+	testDialDst func() (net.Conn, error)
 }
 
 func NewServer(c *ServerConfig) (*Server, error) {
@@ -138,11 +141,15 @@ func (server *Server) Start() error {
 	if err != nil {
 		return fmt.Errorf("listener.Listen: %v", err)
 	}
+	defer l.Close()
+
+	return server.ActiveAndServe(l)
+}
+
+func (server *Server) ActiveAndServe(l net.Listener) error {
 	if !server.conf.DisableTLS {
 		l = tls.NewListener(l, server.tlsConf)
 	}
-	defer l.Close()
-
 	server.listenerLocker.Lock()
 	server.listener = l
 	server.listenerLocker.Unlock()
@@ -151,7 +158,7 @@ func (server *Server) Start() error {
 	if server.conf.EnableWSS {
 		httpMux := http.NewServeMux()
 		httpMux.Handle(server.conf.WSSPath, server)
-		err = http.Serve(server.listener, httpMux)
+		err := http.Serve(server.listener, httpMux)
 		if err != nil {
 			return fmt.Errorf("http.Serve: %v", err)
 		}
@@ -206,7 +213,10 @@ func (server *Server) handleClientConn(leftConn net.Conn, requestEntry *logrus.E
 	}
 	defer rightConn.Close()
 
-	openTunnel(rightConn, leftConn, server.conf.Timeout)
+	err = openTunnel(rightConn, leftConn, server.conf.Timeout)
+	if err != nil {
+		requestEntry.Errorf("openTunnel, %v", err)
+	}
 }
 
 func (server *Server) handleClientMuxConn(leftConn net.Conn, requestEntry *logrus.Entry) {
@@ -240,6 +250,9 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (server *Server) dialDst() (net.Conn, error) {
+	if server.testDialDst != nil {
+		return server.testDialDst()
+	}
 	return server.netDialer.Dial("tcp", server.conf.DstAddr)
 }
 

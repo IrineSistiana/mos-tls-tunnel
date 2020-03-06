@@ -34,9 +34,13 @@ import (
 	"github.com/xtaci/smux"
 )
 
-var ioCopybuffPool = &sync.Pool{New: func() interface{} {
-	return make([]byte, defaultCopyIOBufferSize)
-}}
+var (
+	ioCopybuffPool = &sync.Pool{New: func() interface{} {
+		return make([]byte, defaultCopyIOBufferSize)
+	}}
+
+	longTimeAgo = time.Unix(0, 1)
+)
 
 func acquireIOBuf() []byte {
 	return ioCopybuffPool.Get().([]byte)
@@ -73,40 +77,52 @@ func (fe *firstErr) getErr() error {
 // both of them.
 func openTunnel(a, b net.Conn, timeout time.Duration) error {
 	fe := firstErr{}
+	muTimeout := atomic.Value{}
+	muTimeout.Store(timeout)
 
-	go openOneWayTunnel(a, b, timeout, &fe)
-	openOneWayTunnel(b, a, timeout, &fe)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		openOneWayTunnel(a, b, &muTimeout, &fe)
+		wg.Done()
+	}()
+	openOneWayTunnel(b, a, &muTimeout, &fe)
+	wg.Wait()
 
 	return fe.getErr()
 }
 
 // don not use this func, use openTunnel instead
-func openOneWayTunnel(dst, src net.Conn, timeout time.Duration, fe *firstErr) {
+func openOneWayTunnel(dst, src net.Conn, muTimeout *atomic.Value, fe *firstErr) {
 	buf := acquireIOBuf()
-	_, err := copyBuffer(dst, src, buf, timeout)
 
-	// a nil err is io.EOF err, which is surpressed by copyBuffer.
+	_, err := copyBuffer(dst, src, buf, muTimeout)
+
+	// a nil err might be an io.EOF err, which is surpressed by copyBuffer.
 	// report a nil err means one conn was closed by peer.
 	fe.report(err)
 
 	//let another goroutine break from copy loop
-	dst.Close()
+	muTimeout.Store(time.Duration(0))
+	src.SetDeadline(longTimeAgo)
+	dst.SetDeadline(longTimeAgo)
 	src.Close()
+	dst.Close()
 
 	releaseIOBuf(buf)
 }
 
-func copyBuffer(dst net.Conn, src net.Conn, buf []byte, timeout time.Duration) (written int64, err error) {
+func copyBuffer(dst net.Conn, src net.Conn, buf []byte, muTimeout *atomic.Value) (written int64, err error) {
 
 	if len(buf) <= 0 {
 		panic("buf size <= 0")
 	}
 
 	for {
-		src.SetReadDeadline(time.Now().Add(timeout))
+		src.SetReadDeadline(time.Now().Add(muTimeout.Load().(time.Duration)))
 		nr, er := src.Read(buf)
 		if nr > 0 {
-			dst.SetWriteDeadline(time.Now().Add(timeout))
+			dst.SetWriteDeadline(time.Now().Add(muTimeout.Load().(time.Duration)))
 			nw, ew := dst.Write(buf[0:nr])
 			if nw > 0 {
 				written += int64(nw)

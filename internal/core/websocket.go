@@ -22,6 +22,7 @@ package core
 import (
 	"io"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -37,8 +38,9 @@ var (
 
 // webSocketConnWrapper is a wrapper for net.Conn over WebSocket connection.
 type webSocketConnWrapper struct {
-	ws     *websocket.Conn
-	reader io.Reader
+	ws        *websocket.Conn
+	reader    io.Reader
+	closeOnce sync.Once
 }
 
 func wrapWebSocketConn(c *websocket.Conn) net.Conn {
@@ -81,7 +83,15 @@ func (c *webSocketConnWrapper) Write(b []byte) (int, error) {
 }
 
 func (c *webSocketConnWrapper) Close() error {
-	c.ws.WriteMessage(websocket.CloseMessage, websocketFormatCloseMessage)
+	return c.CloseWithDeadLine(time.Millisecond * 100)
+}
+
+func (c *webSocketConnWrapper) CloseWithDeadLine(t time.Duration) error {
+	c.closeOnce.Do(func() {
+		// set WriteDeadline to avoid sub conn blocking here forever!!
+		c.ws.SetWriteDeadline(time.Now().Add(t))
+		c.ws.WriteMessage(websocket.CloseMessage, websocketFormatCloseMessage)
+	})
 	return c.ws.Close()
 }
 

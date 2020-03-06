@@ -58,6 +58,9 @@ type Client struct {
 	listener       net.Listener
 
 	log *logrus.Logger
+
+	//test only
+	testDialServerRaw func() (net.Conn, error)
 }
 
 // NewClient inits a client instance
@@ -119,7 +122,7 @@ func NewClient(c *ClientConfig) (*Client, error) {
 	client.wssURL = "wss://" + c.ServerName + c.WSSPath
 	internelDial := func(network, addr string) (net.Conn, error) {
 		// overwrite url host addr
-		return client.netDialer.Dial(network, c.RemoteAddr)
+		return client.dialServerRaw()
 	}
 	client.wsDialer = &websocket.Dialer{
 		TLSClientConfig: client.tlsConf,
@@ -191,6 +194,7 @@ func (client *Client) Start() error {
 
 //ForwardConn forwards this connection to server.
 //It will block until server-side connection is closed
+//or c is closed
 func (client *Client) ForwardConn(c net.Conn) error {
 	var rightConn net.Conn
 	var err error
@@ -201,7 +205,7 @@ func (client *Client) ForwardConn(c net.Conn) error {
 			return fmt.Errorf("mux getStream: %v", err)
 		}
 	} else {
-		rightConn, err = client.newServerConn()
+		rightConn, err = client.dialServer()
 		if err != nil {
 			return fmt.Errorf("connect to remote: %v", err)
 		}
@@ -230,10 +234,11 @@ func (client *Client) dialWSS() (net.Conn, error) {
 }
 
 func (client *Client) dialTLS() (net.Conn, error) {
-	conn, err := tls.DialWithDialer(client.netDialer, "tcp", client.conf.RemoteAddr, client.tlsConf)
+	raw, err := client.dialServerRaw()
 	if err != nil {
 		return nil, err
 	}
+	conn := tls.Client(raw, client.tlsConf)
 	if err := conn.Handshake(); err != nil {
 		conn.Close()
 		return nil, err
@@ -241,11 +246,18 @@ func (client *Client) dialTLS() (net.Conn, error) {
 	return conn, nil
 }
 
-func (client *Client) newServerConn() (net.Conn, error) {
+func (client *Client) dialServer() (net.Conn, error) {
 	if client.conf.EnableWSS {
 		return client.dialWSS()
 	}
 	return client.dialTLS()
+}
+
+func (client *Client) dialServerRaw() (net.Conn, error) {
+	if client.testDialServerRaw == nil {
+		return client.netDialer.Dial("tcp", client.conf.RemoteAddr)
+	}
+	return client.testDialServerRaw()
 }
 
 type smuxSessPool struct {
@@ -253,7 +265,7 @@ type smuxSessPool struct {
 }
 
 func (client *Client) dialNewSmuxSess() (*smux.Session, error) {
-	rightConn, err := client.newServerConn()
+	rightConn, err := client.dialServer()
 	if err != nil {
 		return nil, err
 	}

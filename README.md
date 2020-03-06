@@ -104,28 +104,6 @@ client ---> |mtt-client| ---> |mtt-server| ---> destination
 
 See [here](#mtt-server-multi-user-version-mtt-mu-server)
 
-## WebSocket Secure
-
-mos-tls-tunnel support WebSocket Secure protocol (`wss`). WebSocket connections can be proxied by HTTP server such as Apache, as well as most of CDNs that support WebSocket.
-
-`wss-path` will be the path of HTTP request.
-
-## Multiplex (Experimental)
-
-mos-tls-tunnel support connection Multiplex (`mux`). It significantly reduces handshake latency, at the cost of high throughput.
-
-Client can set `mux-max-stream` to control the maximum number of data streams in one TCP connection. The value should be between 1 and 16.
-
-if `wss` is enabled, server can automatically detect whether client enable `mux` or not. But you can still use the `mux` to force the server to enable multiplex if auto-detection fails.
-
-## Self Signed Certificate
-
-On the server, if both `key` and `cert` is empty, a self signed certificate will be used. And the string from `n` will be certificate's hostname. **This self signed certificate CANNOT be verified.**
-
-On the client, if server's certificate can't be verified. You can enable `sv` to skip the verification. **Enable this option only if you know what you are doing. Use it with caution.**
-
-We recommend that you use a valid certificate all the time. A free and valid certificate can be easily obtained here. [Let's Encrypt](https://letsencrypt.org/)
-
 ## Shadowsocks Plugin (SIP003)
 
 mos-tls-tunnel support shadowsocks [SIP003](https://shadowsocks.org/en/spec/Plugin.html). Options keys are the same as [Usage](#usage) defined. You don't have to set client and server address: `b`,`d`,`s`, shadowsocks will set those automatically. 
@@ -154,6 +132,28 @@ Below are example commands with [shadowsocks-libev](https://github.com/shadowsoc
 
 The Android plugin project is maintained here: [mostunnel-android](https://github.com/IrineSistiana/mostunnel-android). This is a plugin of [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android).
 
+## WebSocket Secure
+
+mos-tls-tunnel support WebSocket Secure protocol (`wss`). WebSocket connections can be proxied by HTTP server such as Apache, as well as most of CDNs that support WebSocket.
+
+`wss-path` will be the path of HTTP request.
+
+## Multiplex (Experimental)
+
+mos-tls-tunnel support connection Multiplex (`mux`). It significantly reduces handshake latency, at the cost of high throughput.
+
+Client can set `mux-max-stream` to control the maximum number of data streams in one TCP connection. The value should be between 1 and 16.
+
+if `wss` is enabled, server can automatically detect whether client enable `mux` or not. But you can still use the `mux` to force the server to enable multiplex if auto-detection fails.
+
+## Self Signed Certificate
+
+On the server, if both `key` and `cert` is empty, a self signed certificate will be used. And the string from `n` will be certificate's hostname. **This self signed certificate CANNOT be verified.**
+
+On the client, if server's certificate can't be verified. You can enable `sv` to skip the verification. **Enable this option only if you know what you are doing. Use it with caution.**
+
+We recommend that you use a valid certificate all the time. A free and valid certificate can be easily obtained here. [Let's Encrypt](https://letsencrypt.org/)
+
 ## mtt-server Multi-user Version (mtt-mu-server)
 
 mtt-mu-server allows multiple users to use the `wss` mode of mtt-client to transfer data on the same server port (eg: 443). Users are offloaded to the corresponding backend (`dst` destination) according to the path (`wss-path`) of their HTTP request.
@@ -173,6 +173,8 @@ In general, you need the following build dependencies:
 
 You might build mos-tls-tunnel like this:
 
+<details><summary><code>Example</code></summary><br>
+
     # get source
     go get -d -u github.com/IrineSistiana/mos-tls-tunnel/cmd/mtt-client
     go get -d -u github.com/IrineSistiana/mos-tls-tunnel/cmd/mtt-server
@@ -182,6 +184,8 @@ You might build mos-tls-tunnel like this:
     go build -o ./ github.com/IrineSistiana/mos-tls-tunnel/cmd/mtt-client
     go build -o ./ github.com/IrineSistiana/mos-tls-tunnel/cmd/mtt-server
     go build -o ./ github.com/IrineSistiana/mos-tls-tunnel/cmd/mtt-mu-server
+
+</details>
     
 ## Open Source Components / Libraries
 

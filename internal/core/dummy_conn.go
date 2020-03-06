@@ -20,51 +20,58 @@
 package core
 
 import (
+	"io"
+	"net"
 	"sync"
-
-	"github.com/xtaci/smux"
 )
 
-type muxSession struct {
-	mu sync.Mutex
-	*smux.Session
+type dummyDialerListener struct {
+	notifyListener chan net.Conn
+	closeOnce      sync.Once
+	isClosed       chan struct{}
 }
 
-type muxStream struct {
-	*smux.Stream
-	onClose func() error
-}
-
-func newMuxSession(s *smux.Session) *muxSession {
-	return &muxSession{Session: s}
-}
-
-func (s *muxSession) openStream(maxStreamLimit int) (*muxStream, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.NumStreams() >= maxStreamLimit {
-		return nil, ErrTooManyStreams
+func newDummyDialerListener() *dummyDialerListener {
+	return &dummyDialerListener{
+		notifyListener: make(chan net.Conn, 0),
+		isClosed:       make(chan struct{}, 0),
 	}
-
-	stream, err := s.OpenStream()
-	if err != nil {
-		return nil, err
-	}
-	return &muxStream{Stream: stream, onClose: s.tryCloseOnIdle}, nil
 }
 
-func (s *muxSession) tryCloseOnIdle() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.NumStreams() == 0 {
-		return s.Close()
+func (d *dummyDialerListener) Dial(network string, address string) (net.Conn, error) {
+	return d.connect()
+}
+
+func (d *dummyDialerListener) connect() (net.Conn, error) {
+	c1, c2 := net.Pipe()
+	select {
+	case d.notifyListener <- c2:
+		return c1, nil
+	case <-d.isClosed:
+		return nil, io.ErrClosedPipe
 	}
+}
+
+func (d *dummyDialerListener) Accept() (net.Conn, error) {
+	select {
+	case c := <-d.notifyListener:
+		return c, nil
+	case <-d.isClosed:
+		return nil, io.ErrClosedPipe
+	}
+}
+
+func (d *dummyDialerListener) Addr() net.Addr {
+	return pipeAddr{}
+}
+
+func (d *dummyDialerListener) Close() error {
+	d.closeOnce.Do(func() { close(d.isClosed) })
 	return nil
 }
 
-func (s *muxStream) Close() error {
-	s.Stream.Close()
-	// tryCloseOnIdle
-	return s.onClose()
-}
+// steal from golang net pipeAddr
+type pipeAddr struct{}
+
+func (pipeAddr) Network() string { return "pipe" }
+func (pipeAddr) String() string  { return "pipe" }

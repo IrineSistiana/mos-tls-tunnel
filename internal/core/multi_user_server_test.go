@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -41,7 +42,7 @@ var (
 )
 
 func Test_MU(t *testing.T) {
-	echo, err := runDstServer(muDstAddr, true)
+	echo, err := runDstServer(muDstAddr, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,18 +133,18 @@ func Test_MU(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		localConn.SetWriteDeadline(time.Now().Add(time.Second))
+		localConn.SetDeadline(time.Now().Add(time.Second))
+		//test write
 		if _, err := localConn.Write(garbage); err != nil {
 			return fmt.Errorf("write to client: %v", err)
 		}
-
 		//test read
-		buf := make([]byte, garbageSize)
-		_, err = localConn.Read(buf)
+		b, err := ioutil.ReadAll(io.LimitReader(localConn, int64(garbageSize)))
 		if err != nil {
 			return fmt.Errorf("read from client: %v", err)
 		}
-		if !bytes.Equal(buf, garbage) {
+
+		if !bytes.Equal(b, garbage) {
 			t.Fatal("data err")
 		}
 
